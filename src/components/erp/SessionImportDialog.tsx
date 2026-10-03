@@ -78,7 +78,11 @@ export function SessionImportDialog({ kind }: { kind: Kind }) {
       const row: Row = kind === "student"
         ? { student_id: id, session_id: tgt, class: v.class.trim(), section: v.section.trim() || null, status: common.status, enrollment_date: common.date || null, remarks: `Imported from ${name(src)}` }
         : { staff_id: id, session_id: tgt, designation: v.designation, optional_role: v.optional_role || null, category: v.src.category ?? null, monthly_salary: Number(v.monthly_salary), joining_date: v.joining_date || common.date || null, status: common.status, remarks: `Imported from ${name(src)}` };
-      const { error } = await db.from(table).insert(row);
+      // Reuse (reactivate) an inactive target-session record instead of inserting a duplicate.
+      const ex = q.data?.existing.get(id);
+      if (ex?.status === "active") { errs.push(`${who(v.src)?.name}: Already active in ${name(tgt)}`); continue; }
+      if (ex) { delete row[pid]; delete row.session_id; row.remarks = `${ex.remarks ? ex.remarks + " | " : ""}Reactivated via import from ${name(src)}`; }
+      const { error } = ex ? await db.from(table).update(row).eq("id", ex.id).eq("session_id", tgt) : await db.from(table).insert(row);
       if (error) errs.push(`${who(v.src)?.name}: ${error.code === "23505" ? `Already exists in ${name(tgt)}` : errMsg(error)}`);
       else ok++;
     }
@@ -118,10 +122,13 @@ export function SessionImportDialog({ kind }: { kind: Kind }) {
                       return (
                         <div key={r.id} className="border-b p-2">
                           <label className="flex items-start gap-2">
-                            <input type="checkbox" className="mt-1" disabled={!!ex} checked={!!p} onChange={() => toggle(r)} />
+                            <input type="checkbox" className="mt-1" disabled={ex?.status === "active"} checked={!!p} onChange={() => toggle(r)} />
                             <span className="flex-1">
                               <b>{who(r)?.name}</b> · {code(r)} · {name(src)}: {kind === "student" ? `Class ${r.class}${r.section ? "-" + r.section : ""}` : `${r.designation}${r.optional_role ? " | " + r.optional_role : ""} | ${inr(r.monthly_salary)} | Joined ${r.joining_date ?? "—"}`}
-                              {ex && <span className="block text-xs text-destructive">Already exists in {name(tgt)} — {kind === "student" ? `Class ${ex.class}` : `${ex.designation} ${inr(ex.monthly_salary)}`} ({ex.status})</span>}
+                              {ex?.status === "active"
+                                ? <span className="block text-xs text-destructive">Already active in target session ({name(tgt)}) — {kind === "student" ? `Class ${ex.class}` : `${ex.designation} ${inr(ex.monthly_salary)}`}</span>
+                                : ex ? <span className="block text-xs text-warning-foreground">Inactive record exists in {name(tgt)} ({kind === "student" ? `Class ${ex.class}` : `${ex.designation} ${inr(ex.monthly_salary)}`}, {ex.status}) — can be reused</span>
+                                : <span className="block text-xs text-muted-foreground">Ready to import</span>}
                             </span>
                           </label>
                           {p && (
@@ -166,7 +173,7 @@ export function SessionImportDialog({ kind }: { kind: Kind }) {
                   <div key={id} className="rounded-md border p-2">
                     <b>{who(v.src)?.name}</b> ({code(v.src)})
                     <div className="text-muted-foreground">{name(src)}: {kind === "student" ? `Class ${v.src.class}` : `${v.src.designation}${v.src.optional_role ? " | " + v.src.optional_role : ""} | ${inr(v.src.monthly_salary)}`}</div>
-                    <div>↓ {name(tgt)}: {kind === "student" ? `Class ${v.class}${v.section ? "-" + v.section : ""} · Enrolled ${common.date || "—"}` : `${v.designation}${v.optional_role ? " | " + v.optional_role : ""} | ${inr(Number(v.monthly_salary))} | Joining ${v.joining_date || common.date || "—"}`} · {common.status}</div>
+                    <div>↓ {name(tgt)}{q.data?.existing.get(id) ? " (reactivates existing inactive record)" : " (new record)"}: {kind === "student" ? `Class ${v.class}${v.section ? "-" + v.section : ""} · Enrolled ${common.date || "—"}` : `${v.designation}${v.optional_role ? " | " + v.optional_role : ""} | ${inr(Number(v.monthly_salary))} | Joining ${v.joining_date || common.date || "—"}`} · {common.status}</div>
                   </div>
                 ))}
               </div>
