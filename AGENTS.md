@@ -17,3 +17,4 @@
 - Configurable dropdowns come from `master_items` (by kind) or `fee_categories`; records store the chosen name (fee rows snapshot `category_name`), and masters are deactivated, never deleted. Why: renames never rewrite history.
 - Daily KM defaults live in `vehicle_km_defaults`; `generate_km_logs()` fills/refreshes auto rows and never touches `is_override` rows. Why: one real row per vehicle/day, corrections preserved.
 - Historical payroll corrections are stored on `payroll_periods` (attendance counts + salary_due); user edits/passwords go through admin server functions in `users.functions.ts`. Why: no recreated attendance, no stored passwords.
+- Master lists (students, vehicles) are shown per session via `sessionJoin` (DB inner join on student_sessions / vehicle_assignments); KM defaults and KM logs are keyed by vehicle+session(+date) and never copied across sessions. Why: a person/vehicle existing never implies membership in a session.
