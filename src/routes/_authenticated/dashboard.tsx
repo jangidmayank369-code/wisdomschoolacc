@@ -7,6 +7,7 @@ import { sum } from "@/lib/finance";
 import { PeriodFilter } from "@/components/erp/PeriodFilter";
 import { Empty, ErrorState, Loading, PageHeader, Section, StatCard, StatGrid } from "@/components/erp/States";
 import { Button } from "@/components/ui/button";
+import { DashCharts } from "@/components/erp/DashCharts";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — WPS Doomra ERP" }, { name: "description", content: "School overview: students, staff, income and expenses." }] }),
@@ -30,7 +31,7 @@ function Dashboard() {
     enabled: !!sid && isFinance,
     queryFn: async () => {
       const [tx, stu, stf, bal] = await Promise.all([
-        db.from("transactions").select("type, category, amount").eq("session_id", sid).eq("is_reversed", false).gte("date", range.from).lte("date", range.to).limit(50000),
+        db.from("transactions").select("date, type, category, amount").eq("session_id", sid).eq("is_reversed", false).gte("date", range.from).lte("date", range.to).limit(50000),
         db.from("student_sessions").select("id", { count: "exact", head: true }).eq("session_id", sid).eq("status", "active"),
         db.from("staff_sessions").select("id", { count: "exact", head: true }).eq("session_id", sid).eq("status", "active"),
         db.from("v_student_balances").select("total_charges, total_paid").eq("session_id", sid).limit(20000),
@@ -41,11 +42,14 @@ function Dashboard() {
       const by = (type: string, cats?: string[]) => sum(t.filter((r) => r.type === type && (!cats || cats.includes(r.category))), (r) => r.amount);
       const fees = by("income", ["Student Fees"]);
       const income = by("income");
-      const salaries = by("expense", ["Staff Salary", "Driver Salary"]);
+      const staffSal = by("expense", ["Staff Salary"]);
+      const driverSal = by("expense", ["Driver Salary"]);
+      const salaries = staffSal + driverSal;
       const transport = by("expense", ["Fuel", "Transport"]);
       const maint = by("expense", ["Maintenance"]);
       const expense = by("expense");
       return {
+        tx: t, count: t.length, staffSal, driverSal,
         students: stu.count ?? 0, staff: stf.count ?? 0, fees, other: income - fees, income,
         pending: sum(bal.data ?? [], (r) => Number(r.total_charges) - Number(r.total_paid)),
         salaries, transport, maint, otherExp: expense - salaries - transport - maint, expense, net: income - expense,
@@ -81,14 +85,21 @@ function Dashboard() {
           </Section>
           <Section title="Expenses">
             <StatGrid>
-              <StatCard label="Salaries paid" value={q.data.salaries} money />
+              <StatCard label="Staff salary paid" value={q.data.staffSal} money />
+              <StatCard label="Driver salary paid" value={q.data.driverSal} money />
               <StatCard label="Transport / fuel" value={q.data.transport} money />
               <StatCard label="Maintenance" value={q.data.maint} money />
               <StatCard label="Other expenses" value={q.data.otherExp} money />
               <StatCard label="Total expense" value={q.data.expense} money tone="bad" />
-              <StatCard label="Net balance" value={q.data.net} money tone={q.data.net >= 0 ? "good" : "bad"} />
             </StatGrid>
           </Section>
+          <Section title="Summary">
+            <StatGrid>
+              <StatCard label="Net balance" value={q.data.net} money tone={q.data.net >= 0 ? "good" : "bad"} />
+              <StatCard label="Total transactions" value={q.data.count} />
+            </StatGrid>
+          </Section>
+          <DashCharts tx={q.data.tx} pending={Math.max(0, q.data.pending)} collected={q.data.fees} />
         </>
       )}
       <Section title="Quick actions">

@@ -30,7 +30,7 @@ function Attendance() {
     queryFn: async () => {
       const [ss, att, lv] = await Promise.all([
         db.from("staff_sessions").select("staff_id, designation, staff(employee_id, name)").eq("session_id", sid).eq("status", "active"),
-        db.from("staff_attendance").select("staff_id, status").eq("date", date),
+        db.from("staff_attendance").select("staff_id, status").eq("date", date).eq("session_id", sid),
         db.from("leave_requests").select("staff_id").eq("status", "approved").lte("from_date", date).gte("to_date", date),
       ]);
       if (ss.error) throw ss.error;
@@ -48,8 +48,11 @@ function Attendance() {
   const save = async () => {
     if (busy) return;
     setBusy(true);
-    const rows = Object.entries(marks).map(([staff_id, status]) => ({ staff_id, status, date, session_id: sid }));
-    const { error } = await db.from("staff_attendance").upsert(rows, { onConflict: "staff_id,date" });
+    const locked = new Set((q.data?.att ?? []).map((a) => a.staff_id));
+    const rows = Object.entries(marks).filter(([id]) => !locked.has(id)).map(([staff_id, status]) => ({ staff_id, status, date, session_id: sid }));
+    if (!rows.length) { setBusy(false); toast.info("All attendance for this date is already saved and locked."); return; }
+    if (!confirm(`Save attendance for ${rows.length} staff? It cannot be edited after saving.`)) { setBusy(false); return; }
+    const { error } = await db.from("staff_attendance").insert(rows);
     setBusy(false);
     if (error) toast.error(errMsg(error)); else { toast.success(`Attendance saved for ${rows.length} staff`); qc.invalidateQueries({ queryKey: ["mod"] }); }
   };
@@ -63,11 +66,11 @@ function Attendance() {
             <div key={s.staff_id} className="flex items-center justify-between gap-2 rounded-lg border bg-card p-2.5">
               <div className="min-w-0">
                 <div className="truncate text-sm font-semibold">{(s.staff as any)?.name}</div>
-                <div className="text-xs text-muted-foreground">{(s.staff as any)?.employee_id} · {s.designation}{q.data.leave.has(s.staff_id) ? " · approved leave" : ""}</div>
+                <div className="text-xs text-muted-foreground">{(s.staff as any)?.employee_id} · {s.designation}{q.data.leave.has(s.staff_id) ? " · approved leave" : ""}{q.data.att.some((a) => a.staff_id === s.staff_id) ? " · saved 🔒" : ""}</div>
               </div>
               <div className="flex shrink-0 gap-1">
                 {OPTS.map(([v, l]) => (
-                  <button key={v} onClick={() => setMarks({ ...marks, [s.staff_id]: v })} aria-label={v}
+                  <button key={v} disabled={q.data.att.some((a) => a.staff_id === s.staff_id)} onClick={() => setMarks({ ...marks, [s.staff_id]: v })} aria-label={v}
                     className={`h-9 w-9 rounded-md border text-sm font-bold ${marks[s.staff_id] === v ? (v === "absent" ? "border-destructive bg-destructive text-destructive-foreground" : "border-primary bg-primary text-primary-foreground") : "bg-background"}`}>{l}</button>
                 ))}
               </div>

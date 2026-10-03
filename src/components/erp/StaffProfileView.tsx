@@ -109,7 +109,7 @@ export function StaffProfileView({ staffId, driver, self }: { staffId: string; d
             {self && <StatCard label="Today's attendance" value={todayAtt?.status ?? "Not marked"} />}
           </StatGrid>
           {curMonths.some((m) => m.warning) && (
-            <p className="flex items-center gap-2 rounded-md bg-warning/15 p-2 text-sm"><AlertTriangle className="h-4 w-4" />Absent more than 4 days in some months. Salary is not auto-deducted — review before paying.</p>
+            <p className="flex items-center gap-2 rounded-md bg-warning/15 p-2 text-sm"><AlertTriangle className="h-4 w-4" />Absent more than 4 days in some months. Pay only for actual payable days in those months — review before paying.</p>
           )}
         </>
       )}

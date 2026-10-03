@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -88,9 +88,9 @@ export function FormFields({ fields, values, setValues, errors, refs }: {
 }
 
 /** Shared dialog form. Prevents double submit; shows validation + server errors. */
-export function FormDialog({ open, onOpenChange, title, fields, record, refs, onSubmit, submitLabel = "Save" }: {
+export function FormDialog({ open, onOpenChange, title, fields, record, refs, onSubmit, submitLabel = "Save", intro }: {
   open: boolean; onOpenChange: (o: boolean) => void; title: string; fields: Field[]; record?: Row | null; refs: RefMaps;
-  onSubmit: (values: Row, raw: Row) => Promise<void>; submitLabel?: string;
+  onSubmit: (values: Row, raw: Row) => Promise<void>; submitLabel?: string; intro?: ReactNode;
 }) {
   const [values, setValues] = useState<Row>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -118,6 +118,7 @@ export function FormDialog({ open, onOpenChange, title, fields, record, refs, on
       <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader><DialogTitle>{title}</DialogTitle></DialogHeader>
         <form onSubmit={submit} className="space-y-4">
+          {intro}
           <FormFields fields={fields} values={values} setValues={setValues} errors={errors} refs={refs} />
           {serverErr && <p className="rounded-md bg-destructive/10 p-2 text-sm text-destructive">{serverErr}</p>}
           <DialogFooter className="sticky bottom-0 gap-2 bg-background pt-2">

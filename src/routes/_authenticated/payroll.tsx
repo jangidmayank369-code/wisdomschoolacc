@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { db, useApp } from "@/lib/app-context";
-import { monthEnd, today, fmtMonth } from "@/lib/format";
+import { monthEnd, today, fmtMonth, inr } from "@/lib/format";
 import { payrollRow, sum } from "@/lib/finance";
 import { downloadCsv } from "@/lib/csv";
 import { getModule, type Column, type Row } from "@/lib/modules";
@@ -23,9 +23,12 @@ const cols: Column[] = [
   { key: "monthly", label: "Monthly", money: true }, { key: "daily", label: "Daily", money: true },
   { key: "workingDays", label: "Working" }, { key: "present", label: "Present" },
   { key: "absent", label: "Absent", render: (r) => <span className={r.warning ? "font-bold text-destructive" : ""}>{r.absent}{r.warning ? " ⚠ >4" : ""}</span> },
-  { key: "half_day", label: "Half" }, { key: "leave", label: "Leave" }, { key: "paidDays", label: "Paid days" },
+  { key: "half_day", label: "Half" }, { key: "leave", label: "Leave" }, { key: "deduction", label: "Deduct days" }, { key: "paidDays", label: "Payable days" },
+  { key: "calculated", label: "Calculated", money: true },
   { key: "due", label: "Due", money: true }, { key: "paid", label: "Paid", money: true }, { key: "balance", label: "Balance", money: true },
 ];
+
+const payFieldsList = getModule("staff_payments")!.fields.filter((f) => f.name !== "staff_id" && f.name !== "payroll_month").map((f) => f.name === "amount" ? { ...f, label: "Amount to pay (₹)" } : f);
 
 function Payroll() {
   const { session, user } = useApp();
@@ -60,7 +63,6 @@ function Payroll() {
   });
 
   const rows = q.data ?? [];
-  const fields = getModule("staff_payments")!.fields.filter((f) => f.name !== "staff_id" && f.name !== "payroll_month");
 
   return (
     <div className="space-y-4">
@@ -85,9 +87,23 @@ function Payroll() {
         </>
       )}
       <FormDialog open={!!pay} onOpenChange={(o) => !o && setPay(null)} title={`Pay salary — ${pay?.name ?? ""} · ${fmtMonth(m0)}`}
-        fields={fields} record={pay ? { amount: pay.balance, paid_by: user?.email ?? "" } : null} refs={{}}
+        fields={payFieldsList} record={pay ? { amount: pay.balance, paid_by: user?.email ?? "" } : null} refs={{}} submitLabel="Confirm & pay"
+        intro={pay && (
+          <dl className="grid grid-cols-2 gap-x-3 gap-y-1 rounded-lg border bg-muted/40 p-3 text-sm">
+            {([["Employee", pay.name], ["Designation", pay.designation], ["Month", fmtMonth(m0)], ["Monthly salary", inr(pay.monthly)],
+              ["Daily salary (÷30)", inr(pay.daily)], ["Payable days", `${pay.paidDays} / 30`], ["Present days", pay.present], ["Absent days", pay.absent],
+              ["Approved leave", pay.leave], ["Half days", pay.half_day], ["Deduction days", pay.deduction], ["Calculated salary", inr(pay.calculated)],
+              ["Salary due", inr(pay.due)], ["Already paid", inr(pay.paid)], ["Remaining balance", inr(pay.balance)]] as [string, unknown][]).map(([k, v]) => (
+              <div key={k} className="contents"><dt className="text-muted-foreground">{k}</dt><dd className="text-right font-medium">{String(v ?? "—")}</dd></div>
+            ))}
+            <p className="col-span-2 mt-1 text-xs text-muted-foreground">Rule: 0–1 absent no deduction · 2→1 day · 3→2 · 4→3 · more than 4 → only payable days. Amount to pay below can be changed by admin (partial allowed).</p>
+          </dl>
+        )}
         onSubmit={async (v) => {
-          const { error } = await db.from("staff_payments").insert({ ...v, staff_id: pay!.staff_id, session_id: sid, payroll_month: m0, client_token: crypto.randomUUID() });
+          if (!(Number(v.amount) > 0)) throw new Error("Amount must be greater than zero");
+          if (!confirm(`Pay ${inr(v.amount)} to ${pay!.name} for ${fmtMonth(m0)}?`)) throw new Error("Cancelled — nothing saved");
+          const { error } = await db.from("staff_payments").insert({ ...v, staff_id: pay!.staff_id, session_id: sid, payroll_month: m0, calculated_amount: pay!.calculated, client_token: crypto.randomUUID(),
+            remarks: [v.remarks, Number(v.amount) !== pay!.balance ? `Manual amount; calculated ${inr(pay!.calculated)}` : null].filter(Boolean).join(" · ") || null });
           if (error) throw error;
           toast.success("Salary payment recorded");
           qc.invalidateQueries({ queryKey: ["mod"] }); qc.invalidateQueries({ queryKey: ["dash"] });

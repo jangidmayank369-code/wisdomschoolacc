@@ -15,6 +15,13 @@
       "when": 1790994812652,
       "tag": "0001_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791004350013,
+      "tag": "0002_erp_update_fees_salary_attendance",
+      "breakpoints": true
     }
   ]
 }

@@ -17,7 +17,7 @@ import { ImportDialog } from "./ImportDialog";
 import { Empty, ErrorState, Loading, PageHeader } from "./States";
 
 const selectCls = "h-10 rounded-md border border-input bg-background px-2 text-sm";
-type Correction = { row: Row; kind: "reverse" | "date" } | null;
+type Correction = { row: Row; kind: "reverse" | "date" | "status" } | null;
 
 /**
  * Generic, config-driven module page: list + search + filters + date range +
@@ -92,6 +92,8 @@ export function ResourcePage({ moduleKey, where, embedded, title }: { moduleKey:
       if (error) throw error;
       toast.success("Updated");
     } else {
+      if (m.confirmSave && !confirm(`Save this ${m.title.toLowerCase()} entry${data.amount != null ? ` of ₹${data.amount}` : ""}?`)) throw new Error("Cancelled — nothing saved");
+      if (data.amount != null && !(Number(data.amount) > 0)) throw new Error("Amount must be greater than zero");
       const ins: Row = { ...m.fixed, ...m.insertDefaults, ...where, ...data };
       if (m.sessionScoped) { if (!sid) throw new Error("Select an academic session first"); ins.session_id = sid; }
       if (m.key === "leave_requests" && !isAdmin) ins.staff_id = staffId;
@@ -117,17 +119,21 @@ export function ResourcePage({ moduleKey, where, embedded, title }: { moduleKey:
   };
 
   const dateCol = m.fields.find((f) => f.type === "date" && f.required)?.name ?? "date";
-  const corrFields: Field[] = corr?.kind === "date"
+  const corrFields: Field[] = corr?.kind === "status"
+    ? [{ name: "new_status", label: `New status (current: ${corr.row.status})`, type: "select", options: ["present", "absent", "half_day", "leave"], required: true }, { name: "reason", label: "Reason for correction", type: "text", required: true }]
+    : corr?.kind === "date"
     ? [{ name: "new_date", label: "New date", type: "date", required: true }, { name: "reason", label: "Reason for change", type: "text", required: true }]
     : [{ name: "reason", label: "Reason for reversal", type: "text", required: true }];
   const applyCorrection = async (v: Row) => {
     if (!corr) return;
-    const patch = corr.kind === "date"
+    const patch = corr.kind === "status"
+      ? { status: v.new_status, change_reason: `Status ${corr.row.status} → ${v.new_status} by ${user?.email} at ${new Date().toLocaleString("en-IN")}: ${v.reason}` }
+      : corr.kind === "date"
       ? { [dateCol]: v.new_date, change_reason: `Date ${corr.row[dateCol]} → ${v.new_date} by ${user?.email}: ${v.reason}` }
       : { is_reversed: true, reversal_reason: `${v.reason} (by ${user?.email})` };
     const { error } = await db.from(m.table).update(patch).eq("id", corr.row.id);
     if (error) throw error;
-    toast.success(corr.kind === "date" ? "Date corrected (audit logged)" : "Reversed (audit logged)");
+    toast.success(corr.kind !== "reverse" ? "Date corrected (audit logged)" : "Reversed (audit logged)");
     refresh();
   };
 
@@ -147,7 +153,9 @@ export function ResourcePage({ moduleKey, where, embedded, title }: { moduleKey:
         out.push(<button key="j" className="text-sm text-destructive underline" onClick={() => setLeave(r, "rejected")}>Reject</button>);
       }
       if (isAdmin) out.push(<button key="del" className="text-sm text-destructive underline" onClick={() => remove(r)}>Delete</button>);
-    } else if (canWrite) {
+    } else if (m.noEdit) {
+      if (isAdmin) out.push(<button key="c" className="text-sm text-primary underline" onClick={() => setCorr({ row: r, kind: "status" })}>Correct</button>);
+    } else if (canWrite && isAdmin) {
       out.push(<button key="e" className="text-sm text-primary underline" onClick={() => setEditing(r)}>Edit</button>);
       if (isAdmin) out.push(<button key="del" className="text-sm text-destructive underline" onClick={() => remove(r)}>Delete</button>);
     }
@@ -160,7 +168,7 @@ export function ResourcePage({ moduleKey, where, embedded, title }: { moduleKey:
 
   const toolbar = (
     <>
-      {canWrite && !m.noAdd && <Button size="sm" onClick={() => setEditing(null)}><Plus className="h-4 w-4" />Add</Button>}
+      {canWrite && !m.noAdd && <Button size="sm" onClick={() => setEditing(null)}><Plus className="h-4 w-4" />{m.addLabel ?? "Add"}</Button>}
       {canImport && <Button size="sm" variant="outline" onClick={() => setImportOpen(true)}><Upload className="h-4 w-4" />Import</Button>}
       {canImport && <Button size="sm" variant="outline" onClick={() => downloadSample(m)}><FileDown className="h-4 w-4" />Sample</Button>}
       <Button size="sm" variant="outline" disabled={!rows.length} onClick={() => exportRows(m, rows, session?.name)}><Download className="h-4 w-4" />Export</Button>
@@ -201,7 +209,7 @@ export function ResourcePage({ moduleKey, where, embedded, title }: { moduleKey:
         : list.error ? <ErrorState error={list.error} />
         : !rows.length ? (
           <Empty>
-            {canWrite && !m.noAdd && <Button size="sm" onClick={() => setEditing(null)}>Add</Button>}
+            {canWrite && !m.noAdd && <Button size="sm" onClick={() => setEditing(null)}>{m.addLabel ?? "Add"}</Button>}
             {canImport && <Button size="sm" variant="outline" onClick={() => setImportOpen(true)}>Import</Button>}
             {canImport && <Button size="sm" variant="outline" onClick={() => downloadSample(m)}>Sample</Button>}
           </Empty>
@@ -216,7 +224,7 @@ export function ResourcePage({ moduleKey, where, embedded, title }: { moduleKey:
 
       <FormDialog open={editing !== undefined} onOpenChange={(o) => !o && setEditing(undefined)}
         title={`${editing ? "Edit" : "Add"} ${m.title}`} fields={formFields} record={editing} refs={refs.data ?? {}} onSubmit={save} />
-      <FormDialog open={!!corr} onOpenChange={(o) => !o && setCorr(null)} title={corr?.kind === "date" ? "Correct payment date" : "Reverse entry"}
+      <FormDialog open={!!corr} onOpenChange={(o) => !o && setCorr(null)} title={corr?.kind === "status" ? "Correct attendance (admin, audit logged)" : corr?.kind === "date" ? "Correct payment date" : "Reverse entry"}
         fields={corrFields} refs={{}} onSubmit={applyCorrection} submitLabel="Confirm" />
       {m.importCols && <ImportDialog module={m} open={importOpen} onOpenChange={setImportOpen} onDone={refresh} />}
     </div>
