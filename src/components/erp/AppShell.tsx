@@ -124,10 +124,10 @@ export function AppShell({ children }: { children: ReactNode }) {
             <button aria-label="Sign out" title="Sign out" onClick={signOut} className="rounded-md p-2 hover:bg-accent"><LogOut className="h-4 w-4" /></button>
           </div>
         </header>
-        <main className="mx-auto min-w-0 w-full max-w-7xl p-3 pb-[calc(var(--mobile-bottom-nav-height)+env(safe-area-inset-bottom)+24px)] sm:p-5 sm:pb-[calc(var(--mobile-bottom-nav-height)+env(safe-area-inset-bottom)+24px)] lg:pb-8">{children}</main>
+        <main className="mx-auto min-w-0 w-full max-w-7xl p-3 pb-[calc(var(--mobile-bottom-nav-height)+env(safe-area-inset-bottom)+24px)] sm:p-5 md:pb-8">{children}</main>
       </div>
       {/* Single mobile bottom nav: fixed to the viewport (outside all scroll/transform containers), above page content, below dialogs (z-50+). */}
-      <nav aria-label="Main" className="no-print fixed inset-x-0 bottom-0 z-[9999] w-full max-w-full rounded-t-[18px] bg-nav px-2 pb-[env(safe-area-inset-bottom)] shadow-[0_-6px_20px_rgb(0_0_0/0.18)] lg:hidden">
+      <nav aria-label="Main" className="no-print fixed inset-x-0 bottom-0 z-[9999] w-full max-w-full rounded-t-[18px] bg-nav px-2 pb-[env(safe-area-inset-bottom)] shadow-[0_-6px_20px_rgb(0_0_0/0.18)] md:hidden">
         <div className="grid h-[var(--mobile-bottom-nav-height)] grid-flow-col auto-cols-fr">
           {quick.map((i) => {
             const active = loc.pathname === i.to || loc.pathname.startsWith(i.to + "/");
