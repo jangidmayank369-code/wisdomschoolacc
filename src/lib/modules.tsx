@@ -67,6 +67,8 @@ export type ModuleDef = {
   tokenized?: boolean;
   afterSave?: (ctx: SaveCtx) => Promise<void>;
   extraActions?: (r: Row) => ReactNode;
+  /** Admin "Import from Other Session" (new enrollment/employment only). */
+  sessionImport?: "student" | "staff";
 };
 
 const MODES = ["Cash", "UPI", "Bank Transfer", "Cheque", "Card"];
@@ -134,7 +136,7 @@ const txnImport = (withType: boolean): ImportCol[] => [
 export const MODULES: ModuleDef[] = [
   {
     key: "students", title: "Students", table: "students", select: "*", sessionScoped: false, orderBy: "admission_no",
-    sessionJoin: { table: "student_sessions", select: "session_id, class, section, status" }, addLabel: "Add Student (this session)",
+    sessionJoin: { table: "student_sessions", select: "session_id, class, section, status" }, addLabel: "Add Student (this session)", sessionImport: "student",
     searchCols: ["name", "admission_no", "father_name", "phone"], filters: [{ name: "status", label: "Status", options: ["active", "left", "passed"] }],
     writeRoles: ["admin", "accountant"], rowLink: (r) => `/students/${r.id}`,
     columns: [
@@ -193,6 +195,7 @@ export const MODULES: ModuleDef[] = [
       { name: "class", label: "Class", type: "text", required: true },
       { name: "section", label: "Section", type: "text" },
       { name: "roll_no", label: "Roll no", type: "text" },
+      { name: "enrollment_date", label: "Enrollment date", type: "date" },
       { name: "status", label: "Status", type: "select", options: ["active", "promoted", "left"], default: "active" },
       { name: "transport_route", label: "Transport route", type: "text" },
       { name: "remarks", label: "Remarks", type: "textarea" },
@@ -256,7 +259,7 @@ export const MODULES: ModuleDef[] = [
   {
     key: "staff", title: "Staff", table: "staff", select: "*, staff_sessions(session_id, status, designation, academic_sessions(name, start_date))", sessionScoped: false, orderBy: "employee_id",
     searchCols: ["name", "employee_id", "mobile"], filters: [{ name: "status", label: "Status", options: STATUS }], employmentFilter: true,
-    writeRoles: ["admin"], rowLink: (r) => `/staff/${r.id}`, addLabel: "Add Staff",
+    writeRoles: ["admin"], rowLink: (r) => `/staff/${r.id}`, addLabel: "Add Staff", sessionImport: "staff",
     columns: [{ key: "employee_id", label: "Emp ID" }, { key: "name", label: "Name" }, { key: "mobile", label: "Mobile" },
       { key: "sessions", label: "Sessions", value: (r) => ((r.staff_sessions ?? []) as Row[]).slice().sort((a, b) => String(a.academic_sessions?.start_date).localeCompare(String(b.academic_sessions?.start_date))).map((x) => x.academic_sessions?.name + (x.status === "active" ? "" : ` (${x.status})`)).join(", ") },
       { key: "status", label: "Status" }],
@@ -292,7 +295,7 @@ export const MODULES: ModuleDef[] = [
     columns: [
       { key: "session", label: "Session", value: (r) => r.academic_sessions?.name },
       { key: "emp", label: "Staff ID", value: (r) => r.staff?.employee_id }, { key: "sname", label: "Staff Name", value: (r) => r.staff?.name },
-      { key: "category", label: "Category" }, { key: "designation", label: "Designation" },
+      { key: "category", label: "Category" }, { key: "designation", label: "Designation" }, { key: "optional_role", label: "Optional Role" },
       { key: "joining_date", label: "Joining", render: (r) => fmtDate(r.joining_date) },
       { key: "monthly_salary", label: "Monthly Salary", money: true },
       { key: "status", label: "Status" },
@@ -301,7 +304,8 @@ export const MODULES: ModuleDef[] = [
       { name: "staff_id", label: "Staff", type: "ref", ref: "staff", required: true, createOnly: true },
       { name: "joining_date", label: "Joining date", type: "date" },
       { name: "category", label: "Staff category", type: "select", master: "staff_category" },
-      { name: "designation", label: "Designation", type: "select", master: "designation", required: true },
+      { name: "designation", label: "Primary designation", type: "select", master: "designation", required: true },
+      { name: "optional_role", label: "Optional role (e.g. Driver)", type: "select", options: ["Driver", "Accountant", "Teacher", "Peon", "Other"] },
       { name: "monthly_salary", label: "Monthly salary (₹)", type: "number", required: true },
       { name: "status", label: "Status", type: "select", options: STATUS, default: "active" },
       { name: "remarks", label: "Remarks", type: "textarea" },
@@ -310,6 +314,7 @@ export const MODULES: ModuleDef[] = [
       { header: "employee_id", field: "staff_id", type: "staff", required: true, example: "101" }, sessCol,
       { header: "joining_date", field: "joining_date", type: "date", example: "01-04-2025" },
       { header: "designation", field: "designation", required: true, example: "Driver" },
+      { header: "optional_role", field: "optional_role", example: "" },
       { header: "monthly_salary", field: "monthly_salary", type: "number", required: true, example: "12000" },
       { header: "status", field: "status", example: "active" }, { header: "remarks", field: "remarks", example: "" },
     ],
