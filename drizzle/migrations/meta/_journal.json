@@ -43,6 +43,13 @@
       "when": 1791007351413,
       "tag": "0005_km_skip_inactive_vehicles",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791014808937,
+      "tag": "0006_session_wise_transport",
+      "breakpoints": true
     }
   ]
 }
