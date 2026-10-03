@@ -29,6 +29,20 @@
       "when": 1791005603700,
       "tag": "0003_masters_km_payroll_users",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791007323774,
+      "tag": "0004_students_edit_admin_only",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791007351413,
+      "tag": "0005_km_skip_inactive_vehicles",
+      "breakpoints": true
     }
   ]
 }
