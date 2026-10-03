@@ -25,14 +25,14 @@ function Imports() {
     queryFn: async () => (await db.from("import_logs").select("*").order("created_at", { ascending: false }).limit(200)).data ?? [],
   });
 
-  const doExport = async (m: ModuleDef) => {
+  const doExport = async (m: ModuleDef): Promise<void> => {
     let q = db.from(m.table).select(m.select);
     if (m.sessionScoped && session) q = q.eq("session_id", session.id);
     for (const [k, v] of Object.entries(m.fixed ?? {})) q = q.eq(k, v);
     const { data, error } = await q.limit(20000);
-    if (error) return toast.error(errMsg(error));
-    if (!data?.length) return toast.info("No data to export");
-    exportRows(m, data as Record<string, unknown>[], session?.name);
+    if (error) { toast.error(errMsg(error)); return; }
+    if (!data?.length) { toast.info("No data to export"); return; }
+    exportRows(m, data as unknown as Record<string, unknown>[], session?.name);
   };
 
   return (

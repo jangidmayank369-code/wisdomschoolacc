@@ -72,7 +72,7 @@ export function StaffProfileView({ staffId, driver, self }: { staffId: string; d
   const curMonths: Row[] = history.filter((h) => h.session_id === sid).map((h) => ({
     ...payrollRow({
       monthlySalary: Number(cur?.monthly_salary ?? 0), dueOverride: h.due,
-      attendance: d.att.filter((a) => a.date >= h.month && a.date <= monthEnd(h.month)), paid: h.paid,
+      attendance: d.att.filter((a) => a.date >= h.month && a.date <= monthEnd(h.month)) as { date: string; status: string }[], paid: h.paid,
     }), id: h.id, month: h.month,
   }));
   const tot = { due: sum(curMonths, (r) => r.due), paid: sum(curMonths, (r) => r.paid) };
