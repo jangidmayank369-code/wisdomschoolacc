@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { db, useApp } from "@/lib/app-context";
 import { monthEnd, today, fmtMonth, inr } from "@/lib/format";
-import { payrollRow, salaryFromCounts, dailySalary, sum } from "@/lib/finance";
+import { payrollRow, salaryFromCounts, dailySalary, sum, payrollEligible } from "@/lib/finance";
 import { downloadCsv } from "@/lib/csv";
 import { getModule, type Column, type Field, type Row } from "@/lib/modules";
 import { DataTable } from "@/components/erp/DataTable";
