@@ -75,7 +75,7 @@ export function SessionImportDialog({ kind }: { kind: Kind }) {
     setBusy(true);
     let ok = 0; const errs: string[] = [];
     for (const [id, v] of items) {
-      const row = kind === "student"
+      const row: Row = kind === "student"
         ? { student_id: id, session_id: tgt, class: v.class.trim(), section: v.section.trim() || null, status: common.status, enrollment_date: common.date || null, remarks: `Imported from ${name(src)}` }
         : { staff_id: id, session_id: tgt, designation: v.designation, optional_role: v.optional_role || null, category: v.src.category ?? null, monthly_salary: Number(v.monthly_salary), joining_date: v.joining_date || common.date || null, status: common.status, remarks: `Imported from ${name(src)}` };
       const { error } = await db.from(table).insert(row);
