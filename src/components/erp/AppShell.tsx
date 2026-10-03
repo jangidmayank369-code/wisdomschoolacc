@@ -1,0 +1,151 @@
+import { useState, type ReactNode } from "react";
+import { Link, useLocation, useNavigate } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  LayoutDashboard, Users, GraduationCap, IndianRupee, Briefcase, Wallet, CalendarCheck, CalendarOff, Bus, Gauge, Fuel,
+  Wrench, BookOpen, Upload, FileBarChart, Settings, LogOut, Menu, X, Receipt, User, Truck, ClipboardList,
+} from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useApp } from "@/lib/app-context";
+
+type NavItem = { to: string; label: string; icon: typeof Users; roles: ("admin" | "accountant" | "staff")[] };
+const A = ["admin"] as NavItem["roles"];
+const F = ["admin", "accountant"] as NavItem["roles"];
+
+export const NAV: { group: string; items: NavItem[] }[] = [
+  { group: "", items: [
+    { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: F },
+    { to: "/my", label: "My Dashboard", icon: User, roles: ["staff"] },
+  ] },
+  { group: "Students", items: [
+    { to: "/m/students", label: "Students", icon: GraduationCap, roles: F },
+    { to: "/m/student_sessions", label: "Class Lists", icon: ClipboardList, roles: F },
+    { to: "/m/student_charges", label: "Charges", icon: Receipt, roles: F },
+    { to: "/m/fee_payments", label: "Fee Payments", icon: IndianRupee, roles: F },
+  ] },
+  { group: "Staff", items: [
+    { to: "/m/staff", label: "Staff", icon: Users, roles: A },
+    { to: "/m/staff_sessions", label: "Employment", icon: Briefcase, roles: A },
+    { to: "/payroll", label: "Payroll", icon: Wallet, roles: A },
+    { to: "/attendance", label: "Attendance", icon: CalendarCheck, roles: A },
+    { to: "/m/leave_requests", label: "Leave", icon: CalendarOff, roles: ["admin", "staff"] },
+  ] },
+  { group: "Transport", items: [
+    { to: "/drivers", label: "Drivers", icon: Truck, roles: A },
+    { to: "/m/vehicles", label: "Vehicles", icon: Bus, roles: A },
+    { to: "/m/vehicle_assignments", label: "Assignments", icon: ClipboardList, roles: A },
+    { to: "/m/driver_km_logs", label: "Driver KM", icon: Gauge, roles: A },
+    { to: "/m/transport_expenses", label: "Fuel & Transport", icon: Fuel, roles: A },
+  ] },
+  { group: "Finance", items: [
+    { to: "/m/maintenance_expenses", label: "Maintenance", icon: Wrench, roles: A },
+    { to: "/m/income", label: "Other Income", icon: IndianRupee, roles: F },
+    { to: "/m/expenses", label: "Other Expenses", icon: Wallet, roles: F },
+    { to: "/m/accounts", label: "Accounts", icon: BookOpen, roles: F },
+  ] },
+  { group: "System", items: [
+    { to: "/imports", label: "Import Center", icon: Upload, roles: F },
+    { to: "/reports", label: "Reports", icon: FileBarChart, roles: F },
+    { to: "/settings", label: "Settings", icon: Settings, roles: A },
+  ] },
+];
+
+function SessionSelect() {
+  const { sessions, session, setSessionId } = useApp();
+  if (!sessions.length) return <span className="text-xs text-muted-foreground">No session</span>;
+  return (
+    <select aria-label="Academic session" className="h-9 rounded-md border border-input bg-background px-2 text-sm font-semibold text-primary"
+      value={session?.id ?? ""} onChange={(e) => setSessionId(e.target.value)}>
+      {sessions.map((s) => <option key={s.id} value={s.id}>{s.name}{s.is_current ? " (current)" : ""}</option>)}
+    </select>
+  );
+}
+
+export function AppShell({ children }: { children: ReactNode }) {
+  const { roles, user, isFinance } = useApp();
+  const [open, setOpen] = useState(false);
+  const loc = useLocation();
+  const navigate = useNavigate();
+  const qc = useQueryClient();
+  const allowed = (i: NavItem) => i.roles.some((r) => roles.includes(r));
+  const groups = NAV.map((g) => ({ ...g, items: g.items.filter(allowed) })).filter((g) => g.items.length);
+
+  const signOut = async () => {
+    await qc.cancelQueries(); qc.clear();
+    await supabase.auth.signOut();
+    navigate({ to: "/login", replace: true });
+  };
+
+  const nav = (
+    <nav className="space-y-4 p-3">
+      {groups.map((g) => (
+        <div key={g.group}>
+          {g.group && <div className="mb-1 px-2 text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/60">{g.group}</div>}
+          {g.items.map((i) => {
+            const active = loc.pathname === i.to || loc.pathname.startsWith(i.to + "/");
+            return (
+              <Link key={i.to} to={i.to} onClick={() => setOpen(false)}
+                className={`flex items-center gap-2.5 rounded-md px-2 py-2 text-sm ${active ? "bg-sidebar-accent font-semibold text-sidebar-accent-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent/60"}`}>
+                <i.icon className="h-4 w-4" />{i.label}
+              </Link>
+            );
+          })}
+        </div>
+      ))}
+    </nav>
+  );
+
+  const quick = isFinance
+    ? [{ to: "/dashboard", label: "Home", icon: LayoutDashboard }, { to: "/m/students", label: "Students", icon: GraduationCap }, { to: "/m/fee_payments", label: "Fees", icon: IndianRupee }, { to: "/m/accounts", label: "Accounts", icon: BookOpen }]
+    : [{ to: "/my", label: "Home", icon: User }, { to: "/m/leave_requests", label: "Leave", icon: CalendarOff }];
+
+  return (
+    <div className="min-h-screen bg-background">
+      <aside className="no-print fixed inset-y-0 left-0 z-30 hidden w-60 flex-col overflow-y-auto bg-sidebar lg:flex">
+        <Brand />
+        {nav}
+      </aside>
+      {open && (
+        <div className="no-print fixed inset-0 z-50 lg:hidden">
+          <div className="absolute inset-0 bg-foreground/40" onClick={() => setOpen(false)} />
+          <aside className="absolute inset-y-0 left-0 w-72 overflow-y-auto bg-sidebar">
+            <div className="flex items-center justify-between pr-2"><Brand /><button aria-label="Close menu" onClick={() => setOpen(false)} className="text-sidebar-foreground"><X /></button></div>
+            {nav}
+          </aside>
+        </div>
+      )}
+      <div className="lg:pl-60">
+        <header className="no-print sticky top-0 z-20 flex h-14 items-center gap-2 border-b bg-card/95 px-3 backdrop-blur sm:px-5">
+          <button aria-label="Open menu" className="lg:hidden" onClick={() => setOpen(true)}><Menu className="h-5 w-5" /></button>
+          <span className="truncate text-sm font-bold text-primary lg:hidden">WPS Doomra</span>
+          <div className="ml-auto flex items-center gap-2">
+            <SessionSelect />
+            <span className="hidden text-xs text-muted-foreground sm:inline">{user?.email}</span>
+            <button aria-label="Sign out" title="Sign out" onClick={signOut} className="rounded-md p-2 hover:bg-accent"><LogOut className="h-4 w-4" /></button>
+          </div>
+        </header>
+        <main className="mx-auto max-w-7xl p-3 pb-24 sm:p-5 lg:pb-8">{children}</main>
+      </div>
+      <nav className="no-print fixed inset-x-0 bottom-0 z-30 grid border-t bg-card lg:hidden" style={{ gridTemplateColumns: `repeat(${quick.length + 1}, 1fr)` }}>
+        {quick.map((i) => (
+          <Link key={i.to} to={i.to} className={`flex flex-col items-center gap-0.5 py-2 text-[11px] ${loc.pathname.startsWith(i.to) ? "font-semibold text-primary" : "text-muted-foreground"}`}>
+            <i.icon className="h-5 w-5" />{i.label}
+          </Link>
+        ))}
+        <button onClick={() => setOpen(true)} className="flex flex-col items-center gap-0.5 py-2 text-[11px] text-muted-foreground"><Menu className="h-5 w-5" />More</button>
+      </nav>
+    </div>
+  );
+}
+
+function Brand() {
+  return (
+    <div className="flex items-center gap-2 px-4 py-4">
+      <div className="flex h-9 w-9 items-center justify-center rounded-md bg-sidebar-primary text-sm font-extrabold text-sidebar-primary-foreground">W</div>
+      <div className="leading-tight">
+        <div className="text-sm font-bold text-sidebar-accent-foreground">Wisdom Public School</div>
+        <div className="text-xs text-sidebar-foreground/70">Doomra · ERP</div>
+      </div>
+    </div>
+  );
+}

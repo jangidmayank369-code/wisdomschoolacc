@@ -40,6 +40,7 @@ export type ModuleDef = {
   searchCols?: string[];
   filters?: { name: string; label: string; options: string[] }[];
   fixed?: Row;
+  insertDefaults?: Row;
   columns: Column[];
   fields: Field[];
   writeRoles: Role[];
@@ -476,7 +477,7 @@ export const MODULES: ModuleDef[] = [
   {
     key: "accounts", title: "Accounts Ledger", table: "transactions", select: "*", sessionScoped: true, orderBy: "date", dateField: "date",
     filters: [{ name: "type", label: "Type", options: ["income", "expense"] }, { name: "source_module", label: "Source", options: ["manual", "fee_payments", "staff_payments", "transport_expenses", "maintenance_expenses"] }],
-    fixed: { source_module: "manual" }, writeRoles: ["admin", "accountant"], financial: true, tokenized: true,
+    insertDefaults: { source_module: "manual" }, writeRoles: ["admin", "accountant"], financial: true, tokenized: true,
     columns: txnCols, fields: txnFields(), importCols: txnImport(true),
   },
 ];
