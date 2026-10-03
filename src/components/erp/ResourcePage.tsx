@@ -17,7 +17,7 @@ import { ImportDialog } from "./ImportDialog";
 import { Empty, ErrorState, Loading, PageHeader } from "./States";
 
 const selectCls = "h-10 rounded-md border border-input bg-background px-2 text-sm";
-type Correction = { row: Row; kind: "reverse" | "date" | "status" } | null;
+type Correction = { row: Row; kind: "reverse" | "date" | "status" | "km" | "amount" } | null;
 
 /**
  * Generic, config-driven module page: list + search + filters + date range +
@@ -45,6 +45,7 @@ export function ResourcePage({ moduleKey, where, embedded, title }: { moduleKey:
     queryKey: qk,
     enabled: !m.sessionScoped || !!sid,
     queryFn: async () => {
+      if (m.table === "driver_km_logs" && isAdmin) await db.rpc("generate_km_logs", {});
       let query = db.from(m.table).select(m.select);
       if (m.sessionScoped) query = query.eq("session_id", sid);
       for (const [k, v] of Object.entries({ ...m.fixed, ...where, ...filters })) if (v) query = query.eq(k, v);
@@ -119,21 +120,32 @@ export function ResourcePage({ moduleKey, where, embedded, title }: { moduleKey:
   };
 
   const dateCol = m.fields.find((f) => f.type === "date" && f.required)?.name ?? "date";
-  const corrFields: Field[] = corr?.kind === "status"
+  const corrFields: Field[] = corr?.kind === "km"
+    ? [{ name: "km", label: `KM for ${corr.row.date} (current ${corr.row.km})`, type: "number", required: true }, { name: "reason", label: "Reason for correction", type: "text", required: true }]
+    : corr?.kind === "amount"
+    ? [{ name: "amount", label: `Correct amount (current ₹${corr.row.amount})`, type: "number", required: true }, { name: "reason", label: "Reason for correction", type: "text", required: true }]
+    : corr?.kind === "status"
     ? [{ name: "new_status", label: `New status (current: ${corr.row.status})`, type: "select", options: ["present", "absent", "half_day", "leave"], required: true }, { name: "reason", label: "Reason for correction", type: "text", required: true }]
     : corr?.kind === "date"
     ? [{ name: "new_date", label: "New date", type: "date", required: true }, { name: "reason", label: "Reason for change", type: "text", required: true }]
     : [{ name: "reason", label: "Reason for reversal", type: "text", required: true }];
   const applyCorrection = async (v: Row) => {
     if (!corr) return;
-    const patch = corr.kind === "status"
+    if (corr.kind === "amount" && !(Number(v.amount) > 0)) throw new Error("Amount must be greater than zero");
+    if (!confirm("Save this correction? It will be recorded in the audit log.")) throw new Error("Cancelled — nothing saved");
+    const stamp = `by ${user?.email} at ${new Date().toLocaleString("en-IN")}`;
+    const patch = corr.kind === "km"
+      ? { km: v.km, is_override: true, change_reason: `KM ${corr.row.km} → ${v.km} ${stamp}: ${v.reason}`, updated_by: user?.id, updated_at: new Date().toISOString() }
+      : corr.kind === "amount"
+      ? { amount: v.amount, change_reason: `Amount ₹${corr.row.amount} → ₹${v.amount} ${stamp}: ${v.reason}`, corrected_by: user?.id, corrected_at: new Date().toISOString() }
+      : corr.kind === "status"
       ? { status: v.new_status, change_reason: `Status ${corr.row.status} → ${v.new_status} by ${user?.email} at ${new Date().toLocaleString("en-IN")}: ${v.reason}` }
       : corr.kind === "date"
       ? { [dateCol]: v.new_date, change_reason: `Date ${corr.row[dateCol]} → ${v.new_date} by ${user?.email}: ${v.reason}` }
       : { is_reversed: true, reversal_reason: `${v.reason} (by ${user?.email})` };
     const { error } = await db.from(m.table).update(patch).eq("id", corr.row.id);
     if (error) throw error;
-    toast.success(corr.kind !== "reverse" ? "Date corrected (audit logged)" : "Reversed (audit logged)");
+    toast.success(corr.kind === "reverse" ? "Reversed (audit logged)" : "Corrected (audit logged)");
     refresh();
   };
 
@@ -143,6 +155,7 @@ export function ResourcePage({ moduleKey, where, embedded, title }: { moduleKey:
     const editableTxn = m.table !== "transactions" || r.source_module === "manual";
     if (m.financial) {
       if (isAdmin && !r.is_reversed && editableTxn) {
+        if (m.key === "staff_payments") out.push(<button key="a" className="text-sm text-primary underline" onClick={() => setCorr({ row: r, kind: "amount" })}>Correct amount</button>);
         out.push(<button key="d" className="text-sm text-primary underline" onClick={() => setCorr({ row: r, kind: "date" })}>Change date</button>);
         out.push(<button key="r" className="text-sm text-destructive underline" onClick={() => setCorr({ row: r, kind: "reverse" })}>Reverse</button>);
       }
@@ -153,6 +166,8 @@ export function ResourcePage({ moduleKey, where, embedded, title }: { moduleKey:
         out.push(<button key="j" className="text-sm text-destructive underline" onClick={() => setLeave(r, "rejected")}>Reject</button>);
       }
       if (isAdmin) out.push(<button key="del" className="text-sm text-destructive underline" onClick={() => remove(r)}>Delete</button>);
+    } else if (m.key === "driver_km_logs") {
+      if (isAdmin) out.push(<button key="k" className="text-sm text-primary underline" onClick={() => setCorr({ row: r, kind: "km" })}>Edit day</button>);
     } else if (m.noEdit) {
       if (isAdmin) out.push(<button key="c" className="text-sm text-primary underline" onClick={() => setCorr({ row: r, kind: "status" })}>Correct</button>);
     } else if (canWrite && isAdmin) {
@@ -224,7 +239,7 @@ export function ResourcePage({ moduleKey, where, embedded, title }: { moduleKey:
 
       <FormDialog open={editing !== undefined} onOpenChange={(o) => !o && setEditing(undefined)}
         title={`${editing ? "Edit" : "Add"} ${m.title}`} fields={formFields} record={editing} refs={refs.data ?? {}} onSubmit={save} />
-      <FormDialog open={!!corr} onOpenChange={(o) => !o && setCorr(null)} title={corr?.kind === "status" ? "Correct attendance (admin, audit logged)" : corr?.kind === "date" ? "Correct payment date" : "Reverse entry"}
+      <FormDialog open={!!corr} onOpenChange={(o) => !o && setCorr(null)} title={corr?.kind === "km" ? "Correct daily KM (audit logged)" : corr?.kind === "amount" ? "Correct payment amount (audit logged)" : corr?.kind === "status" ? "Correct attendance (admin, audit logged)" : corr?.kind === "date" ? "Correct payment date" : "Reverse entry"}
         fields={corrFields} refs={{}} onSubmit={applyCorrection} submitLabel="Confirm" />
       {m.importCols && <ImportDialog module={m} open={importOpen} onOpenChange={setImportOpen} onDone={refresh} />}
     </div>
