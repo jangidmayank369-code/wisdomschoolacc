@@ -99,7 +99,8 @@ export function StaffProfileView({ staffId, driver, self }: { staffId: string; d
       ) : (
         <>
           <StatGrid>
-            <StatCard label="Designation" value={cur.designation} />
+            <StatCard label="Primary designation" value={cur.designation} />
+            <StatCard label="Optional role" value={cur.optional_role || "—"} />
             <StatCard label="Joining date" value={fmtDate(cur.joining_date) || "—"} />
             <StatCard label="Monthly salary" value={cur.monthly_salary} money />
             <StatCard label="Daily salary (÷30)" value={dailySalary(cur.monthly_salary)} money />
@@ -142,7 +143,7 @@ export function StaffProfileView({ staffId, driver, self }: { staffId: string; d
           {d.sessions.length ? (
             <DataTable rows={d.sessions.map((x) => ({ ...x, id: x.id }))} columns={[
               { key: "s", label: "Session", value: (r) => r.academic_sessions?.name }, { key: "category", label: "Category" },
-              { key: "designation", label: "Designation" }, { key: "monthly_salary", label: "Salary", money: true },
+              { key: "designation", label: "Designation" }, { key: "optional_role", label: "Optional Role" }, { key: "monthly_salary", label: "Salary", money: true },
               { key: "joining_date", label: "Joining", render: (r) => fmtDate(r.joining_date) }, { key: "status", label: "Status" },
             ]} />
           ) : <Empty text="No employment records" />}
