@@ -54,7 +54,7 @@ function SessionSelect() {
   const { sessions, session, setSessionId } = useApp();
   if (!sessions.length) return <span className="text-xs text-muted-foreground">No session</span>;
   return (
-    <select aria-label="Academic session" className="h-9 rounded-md border border-input bg-background px-2 text-sm font-semibold text-primary"
+    <select aria-label="Academic session" className="h-9 max-w-[42vw] rounded-md border border-input bg-background px-2 text-base font-semibold text-primary sm:max-w-none sm:text-sm"
       value={session?.id ?? ""} onChange={(e) => setSessionId(e.target.value)}>
       {sessions.map((s) => <option key={s.id} value={s.id}>{s.name}{s.is_current ? " (current)" : ""}</option>)}
     </select>
@@ -100,7 +100,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     : [{ to: "/my", label: "Home", icon: User }, { to: "/m/leave_requests", label: "Leave", icon: CalendarOff }];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen min-w-0 max-w-full bg-background">
       <aside className="no-print fixed inset-y-0 left-0 z-30 hidden w-60 flex-col overflow-y-auto bg-sidebar lg:flex">
         <Brand />
         {nav}
@@ -114,33 +114,32 @@ export function AppShell({ children }: { children: ReactNode }) {
           </aside>
         </div>
       )}
-      <div className="lg:pl-60">
-        <header className="no-print sticky top-0 z-20 flex h-14 items-center gap-2 border-b bg-card/95 px-3 backdrop-blur sm:px-5">
-          <button aria-label="Open menu" className="lg:hidden" onClick={() => setOpen(true)}><Menu className="h-5 w-5" /></button>
-          <span className="truncate text-sm font-bold text-primary lg:hidden">WPS Doomra</span>
-          <div className="ml-auto flex items-center gap-2">
+      <div className="min-w-0 max-w-full lg:pl-60">
+        <header className="no-print sticky top-0 z-20 grid h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-b bg-card/95 px-3 backdrop-blur sm:px-5">
+          <div className="flex min-w-0 items-center gap-2"><button aria-label="Open menu" className="shrink-0 lg:hidden" onClick={() => setOpen(true)}><Menu className="h-5 w-5" /></button>
+          <span className="truncate text-sm font-bold text-primary lg:hidden">WPS Doomra</span></div>
+          <div className="flex min-w-0 items-center gap-2">
             <SessionSelect />
             <span className="hidden text-xs text-muted-foreground sm:inline">{user?.email}</span>
             <button aria-label="Sign out" title="Sign out" onClick={signOut} className="rounded-md p-2 hover:bg-accent"><LogOut className="h-4 w-4" /></button>
           </div>
         </header>
-        <main className="mx-auto max-w-7xl p-3 pb-[calc(96px+env(safe-area-inset-bottom))] sm:p-5 sm:pb-[calc(96px+env(safe-area-inset-bottom))] lg:pb-8">{children}</main>
+        <main className="mx-auto min-w-0 w-full max-w-7xl p-3 pb-[calc(var(--mobile-bottom-nav-height)+env(safe-area-inset-bottom)+24px)] sm:p-5 md:pb-8">{children}</main>
       </div>
       {/* Single mobile bottom nav: fixed to the viewport (outside all scroll/transform containers), above page content, below dialogs (z-50+). */}
-      <nav aria-label="Main" className="no-print fixed inset-x-0 bottom-0 z-[45] w-full rounded-t-[18px] bg-nav px-2 pt-1.5 shadow-[0_-6px_20px_rgb(0_0_0/0.18)] lg:hidden"
-        style={{ paddingBottom: "max(8px, env(safe-area-inset-bottom))", transform: "translateZ(0)" }}>
-        <div className="grid h-[64px]" style={{ gridTemplateColumns: `repeat(${quick.length + 1}, minmax(0, 1fr))` }}>
+      <nav aria-label="Main" className="no-print fixed inset-x-0 bottom-0 z-[9999] w-full max-w-full rounded-t-[18px] bg-nav px-2 pb-[env(safe-area-inset-bottom)] shadow-[0_-6px_20px_rgb(0_0_0/0.18)] md:hidden">
+        <div className="grid h-[var(--mobile-bottom-nav-height)] grid-flow-col auto-cols-fr">
           {quick.map((i) => {
             const active = loc.pathname === i.to || loc.pathname.startsWith(i.to + "/");
             return (
               <Link key={i.to} to={i.to} aria-current={active ? "page" : undefined} className="flex min-w-0 flex-col items-center justify-center gap-1">
-                <span className={`flex h-8 w-14 items-center justify-center rounded-full ${active ? "bg-nav-active text-nav-foreground" : "text-nav-muted"}`}><i.icon className="h-[22px] w-[22px]" /></span>
+                <span className={`flex h-8 w-[min(3.5rem,100%)] items-center justify-center rounded-full ${active ? "bg-nav-active text-nav-foreground" : "text-nav-muted"}`}><i.icon className="h-[22px] w-[22px] shrink-0" /></span>
                 <span className={`truncate text-[11.5px] leading-none ${active ? "font-semibold text-nav-foreground" : "text-nav-muted"}`}>{i.label}</span>
               </Link>
             );
           })}
           <button onClick={() => setOpen(true)} className="flex min-w-0 flex-col items-center justify-center gap-1">
-            <span className={`flex h-8 w-14 items-center justify-center rounded-full ${open ? "bg-nav-active text-nav-foreground" : "text-nav-muted"}`}><Menu className="h-[22px] w-[22px]" /></span>
+            <span className={`flex h-8 w-[min(3.5rem,100%)] items-center justify-center rounded-full ${open ? "bg-nav-active text-nav-foreground" : "text-nav-muted"}`}><Menu className="h-[22px] w-[22px] shrink-0" /></span>
             <span className="text-[11.5px] leading-none text-nav-muted">More</span>
           </button>
         </div>

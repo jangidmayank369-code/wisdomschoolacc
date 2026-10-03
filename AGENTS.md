@@ -19,3 +19,4 @@
 - Historical payroll corrections are stored on `payroll_periods` (attendance counts + salary_due); user edits/passwords go through admin server functions in `users.functions.ts`. Why: no recreated attendance, no stored passwords.
 - Master lists (students, vehicles) are shown per session via `sessionJoin` (DB inner join on student_sessions / vehicle_assignments); KM defaults and KM logs are keyed by vehicle+session(+date) and never copied across sessions. Why: a person/vehicle existing never implies membership in a session.
 - Cross-session reuse of people creates only a new student_sessions/staff_sessions row (SessionImportDialog); driver eligibility = designation OR optional_role is Driver in the session. Why: one master profile, no copied financial history.
+- Mobile layout reserves space from the shared `--mobile-bottom-nav-height` token, and dialogs layer above the fixed navigation. Why: safe-area changes must never hide page content or form actions.

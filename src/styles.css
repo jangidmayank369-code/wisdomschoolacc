@@ -69,6 +69,7 @@
 }
 
 :root {
+  --mobile-bottom-nav-height: 72px;
   --nav: #0B2A4A;
   --nav-active: #1E5FA8;
   --nav-foreground: #ffffff;
@@ -148,6 +149,20 @@
 @layer base {
   * {
     border-color: var(--color-border);
+    box-sizing: border-box;
+  }
+
+  html, body, #root {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  @media (max-width: 639px) {
+    input, select, textarea {
+      font-size: 16px;
+      max-width: 100%;
+    }
   }
 
   body {

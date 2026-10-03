@@ -31,7 +31,7 @@ export const StatCard = ({ label, value, money, tone }: { label: string; value: 
 );
 
 export const StatGrid = ({ children }: { children: ReactNode }) => (
-  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4">{children}</div>
+  <div className="grid min-w-0 grid-cols-[repeat(2,minmax(0,1fr))] gap-2 max-[340px]:grid-cols-1 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4">{children}</div>
 );
 
 export const Section = ({ title, actions, children }: { title: string; actions?: ReactNode; children: ReactNode }) => (
@@ -45,11 +45,11 @@ export const Section = ({ title, actions, children }: { title: string; actions?:
 );
 
 export const PageHeader = ({ title, subtitle, actions }: { title: string; subtitle?: ReactNode; actions?: ReactNode }) => (
-  <div className="no-print mb-4 flex flex-wrap items-end justify-between gap-3">
-    <div>
+  <div className="no-print mb-4 grid min-w-0 gap-3 sm:flex sm:flex-wrap sm:items-end sm:justify-between">
+    <div className="min-w-0">
       <h1 className="text-xl font-bold tracking-tight sm:text-2xl">{title}</h1>
       {subtitle && <div className="text-sm text-muted-foreground">{subtitle}</div>}
     </div>
-    {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
+    {actions && <div className="flex min-w-0 max-w-full flex-wrap gap-2">{actions}</div>}
   </div>
 );

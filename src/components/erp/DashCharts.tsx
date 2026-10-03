@@ -10,10 +10,10 @@ const money = (v: unknown) => inr(num(v));
 
 function Card({ title, empty, emptyText = "No data available", children }: { title: string; empty: boolean; emptyText?: string; children: React.ReactElement }) {
   return (
-    <div className="rounded-xl border bg-card p-4 shadow-sm">
+    <div className="min-w-0 max-w-full rounded-xl border bg-card p-4 shadow-sm">
       <div className="mb-2 text-sm font-semibold">{title}</div>
       {empty ? <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">{emptyText}</div>
-        : <div className="h-56"><ResponsiveContainer width="100%" height="100%">{children}</ResponsiveContainer></div>}
+        : <div className="h-56 min-w-0"><ResponsiveContainer width="100%" height="100%">{children}</ResponsiveContainer></div>}
     </div>
   );
 }
@@ -42,7 +42,7 @@ export function DashCharts({ tx, pending, collected }: { tx: Tx[]; pending: numb
 
   return (
     <Section title="Charts">
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid min-w-0 gap-3 md:grid-cols-2">
         <Card title="Fee collection by month (trend)" empty={!series.some((r) => r.fees)}>
           <LineChart data={series}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="label" tick={axis} /><YAxis tick={axis} tickFormatter={yFmt} width={40} />
             <Tooltip formatter={money} /><Line type="monotone" dataKey="fees" name="Fees" stroke={C[0]} strokeWidth={2} isAnimationActive={false} /></LineChart>
@@ -61,7 +61,7 @@ export function DashCharts({ tx, pending, collected }: { tx: Tx[]; pending: numb
             <Pie data={[{ name: "Salaries", value: salary }, { name: "Other expenses", value: otherExp }]} dataKey="value" nameKey="name" outerRadius={75} isAnimationActive={false}>
               <Cell fill={C[0]} /><Cell fill={C[4]} /></Pie></PieChart>
         </Card>
-        <div className="md:col-span-2">
+        <div className="min-w-0 md:col-span-2">
           <Card title="Expense category breakdown" empty={!catData.length} emptyText="No expense data available">
             <BarChart data={catData} layout="vertical" margin={{ left: 10 }}><CartesianGrid strokeDasharray="3 3" /><XAxis type="number" tick={axis} tickFormatter={yFmt} />
               <YAxis type="category" dataKey="name" tick={axis} width={95} /><Tooltip formatter={money} />

@@ -35,21 +35,21 @@ type Tx = { id: string; date: string; type: string; category: string; amount: nu
 function Kpi({ label, value, icon: I, tone, hint }: { label: string; value: number; icon: typeof Wallet; tone?: "good" | "bad" | "warn"; hint?: string }) {
   const c = tone === "good" ? "text-success" : tone === "bad" ? "text-destructive" : tone === "warn" ? "text-warning" : "text-foreground";
   return (
-    <div className="rounded-xl border bg-card p-3 shadow-sm sm:p-4">
+    <div className="min-w-0 max-w-full rounded-xl border bg-card p-3 shadow-sm sm:p-4">
       <div className="flex items-center justify-between gap-2">
         <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</span>
         <span className="rounded-lg bg-primary/10 p-1.5 text-primary"><I className="h-4 w-4" /></span>
       </div>
-      <div className={`mt-2 text-lg font-bold sm:text-2xl ${c}`}>{inr(value)}</div>
+      <div className={`mt-2 break-words text-lg font-bold sm:text-2xl ${c}`}>{inr(value)}</div>
       {hint && <div className="mt-0.5 text-[11px] text-muted-foreground">{hint}</div>}
     </div>
   );
 }
 const Mini = ({ label, value }: { label: string; value: string | number }) => (
-  <div className="rounded-lg bg-muted/50 p-3"><div className="text-xs text-muted-foreground">{label}</div><div className="mt-0.5 font-bold">{value}</div></div>
+  <div className="min-w-0 max-w-full rounded-lg bg-muted/50 p-3"><div className="text-xs text-muted-foreground">{label}</div><div className="mt-0.5 break-words font-bold">{value}</div></div>
 );
 const Panel = ({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) => (
-  <div className="rounded-xl border bg-card p-4 shadow-sm">
+  <div className="min-w-0 max-w-full rounded-xl border bg-card p-4 shadow-sm">
     <div className="mb-3 flex items-center justify-between gap-2"><h3 className="text-sm font-semibold">{title}</h3>{action}</div>
     {children}
   </div>
@@ -124,21 +124,21 @@ function Dashboard() {
   const pct = d && d.totalFees > 0 ? Math.round((d.paid / d.totalFees) * 1000) / 10 : 0;
 
   return (
-    <div className="space-y-5">
+    <div className="min-w-0 max-w-full space-y-5">
       <PageHeader title="Dashboard"
         subtitle={session ? <span>Showing data for: <b className="text-primary">{session.name}</b>{period !== "session" && ` · ${fmtDate(range.from)} – ${fmtDate(range.to)}`}</span> : "No session selected"}
         actions={<>
           <PeriodFilter period={period} setPeriod={setPeriod} custom={custom} setCustom={setCustom} />
           {d && d.classes.length > 0 && (
-            <select aria-label="Class" className="h-10 rounded-md border border-input bg-background px-2 text-sm" value={cls} onChange={(e) => setCls(e.target.value)}>
+            <select aria-label="Class" className="h-10 max-w-full rounded-md border border-input bg-background px-2 text-base sm:text-sm" value={cls} onChange={(e) => setCls(e.target.value)}>
               <option value="">All classes</option>{d.classes.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           )}
         </>} />
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+      <div className="grid grid-cols-[repeat(2,minmax(0,1fr))] gap-2 sm:grid-cols-4 lg:grid-cols-7">
         {QUICK.filter((x) => isAdmin || x.who === "finance").map((x) => (
-          <Button key={x.to} asChild variant="outline" className="h-11 justify-start gap-1.5 text-sm"><Link to={x.to}><Plus className="h-4 w-4 text-primary" />{x.l}</Link></Button>
+          <Button key={x.to} asChild variant="outline" className="h-auto min-h-11 min-w-0 justify-start gap-1.5 whitespace-normal text-left text-sm"><Link to={x.to}><Plus className="h-4 w-4 shrink-0 text-primary" />{x.l}</Link></Button>
         ))}
       </div>
 
@@ -148,7 +148,7 @@ function Dashboard() {
         </Empty>
       ) : q.isLoading || q.isFetching && !d ? <Loading text="Calculating dashboard…" /> : q.error ? <ErrorState error={q.error} /> : d && q.data && (
         <>
-          <div className="grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-3 xl:grid-cols-6">
+          <div className="grid grid-cols-[repeat(2,minmax(0,1fr))] gap-2 max-[340px]:grid-cols-1 sm:gap-3 md:grid-cols-3 xl:grid-cols-6">
             <Kpi label="Total Session Fees" value={d.totalFees} icon={IndianRupee} hint="Paid + Pending" />
             <Kpi label="Paid Fees" value={d.paid} icon={Wallet} tone="good" />
             <Kpi label="Pending Fees" value={d.pending} icon={Clock} tone={d.pending > 0 ? "warn" : undefined} />
@@ -157,12 +157,12 @@ function Dashboard() {
             <Kpi label="Net Balance" value={d.net} icon={Scale} tone={d.net >= 0 ? "good" : "bad"} />
           </div>
 
-          <div className="grid gap-3 lg:grid-cols-3">
-            <div className="lg:col-span-2">
+          <div className="grid min-w-0 gap-3 lg:grid-cols-3">
+            <div className="min-w-0 lg:col-span-2">
               <Panel title="Fee collection summary (whole session)">
                 {d.totalFees <= 0 ? <p className="py-6 text-center text-sm text-muted-foreground">No data available</p> : (
                   <div className="space-y-4">
-                    <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="grid grid-cols-[repeat(3,minmax(0,1fr))] gap-2 text-center max-[380px]:grid-cols-1">
                       <Mini label="Total Session Fees" value={inr(d.totalFees)} />
                       <Mini label="Paid" value={inr(d.paid)} />
                       <Mini label="Pending" value={inr(d.pending)} />
@@ -178,7 +178,7 @@ function Dashboard() {
               </Panel>
             </div>
             <Panel title="Salary overview">
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-[repeat(2,minmax(0,1fr))] gap-2 max-[340px]:grid-cols-1">
                 <Mini label="Salary due" value={inr(d.salaryDue)} />
                 <Mini label="Salary paid" value={inr(d.salPaid)} />
                 <Mini label="Remaining" value={inr(Math.max(0, d.salaryDue - d.salPaid))} />
@@ -190,7 +190,7 @@ function Dashboard() {
           </div>
 
           <Panel title="Students & fees">
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+            <div className="grid grid-cols-[repeat(2,minmax(0,1fr))] gap-2 max-[340px]:grid-cols-1 sm:grid-cols-4 lg:grid-cols-7">
               <Mini label="Total students" value={d.students} />
               <Mini label="With pending fees" value={d.withPending} />
               <Mini label="Fully paid" value={d.fullyPaid} />
@@ -203,7 +203,7 @@ function Dashboard() {
 
           <DashCharts tx={q.data.tx} pending={Math.max(0, d.pending)} collected={d.paid} />
 
-          <div className="grid gap-3 xl:grid-cols-2">
+          <div className="grid min-w-0 gap-3 xl:grid-cols-2">
             <Panel title="Recent transactions" action={<Button asChild size="sm" variant="outline"><Link to="/m/$module" params={{ module: "accounts" }}>View all</Link></Button>}>
               {!q.data.recent.length ? <p className="py-6 text-center text-sm text-muted-foreground">No data available</p> : (
                 <div className="overflow-x-auto"><table className="w-full text-sm">
@@ -236,7 +236,7 @@ function Dashboard() {
               )}
             </Panel>
           </div>
-          <p className="flex items-center gap-1 text-xs text-muted-foreground"><Users className="h-3 w-3" /> Fee totals cover the whole selected session; income, expense and charts follow the period filter. <UserCheck className="h-3 w-3" /> Reversed payments are excluded.</p>
+          <p className="text-xs text-muted-foreground"><Users className="mr-1 inline h-3 w-3" />Fee totals cover the whole selected session; income, expense and charts follow the period filter. <UserCheck className="mx-1 inline h-3 w-3" />Reversed payments are excluded.</p>
         </>
       )}
     </div>
