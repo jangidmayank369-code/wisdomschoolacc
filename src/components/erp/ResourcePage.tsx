@@ -30,7 +30,7 @@ export function ResourcePage({ moduleKey, where, embedded, title, allSessions }:
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [q, setQ] = useState("");
-  const [filters, setFilters] = useState<Row>(m.defaultFilters ?? {});
+  const [filters, setFilters] = useState<Row>(allSessions || embedded ? {} : m.defaultFilters ?? {});
   const [empSid, setEmpSid] = useState<string | null>(null);
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
@@ -72,7 +72,7 @@ export function ResourcePage({ moduleKey, where, embedded, title, allSessions }:
     if (!q.trim()) return all;
     const s = q.toLowerCase();
     return all.filter((r) => m.columns.some((c) => String(c.value ? c.value(r) : r[c.key] ?? "").toLowerCase().includes(s)));
-  }, [list.data, q, m.columns]);
+  }, [list.data, q, m.columns, m.employmentFilter, empSession]);
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["mod"] });
