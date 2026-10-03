@@ -309,7 +309,8 @@ export const MODULES: ModuleDef[] = [
     columns: [
       { key: "payment_date", label: "Date", render: (r) => fmtDate(r.payment_date) }, { key: "staff", label: "Staff", value: st },
       { key: "payroll_month", label: "Month", render: (r) => fmtMonth(r.payroll_month) }, { key: "amount", label: "Amount", money: true },
-      { key: "mode", label: "Mode" }, { key: "paid_by", label: "Paid by" }, { key: "reference", label: "Ref" },
+      { key: "salary_days", label: "Days" }, { key: "calculated_amount", label: "Calculated", money: true },
+      { key: "mode", label: "Mode" }, { key: "paid_by", label: "Paid by" }, { key: "reference", label: "Ref" }, { key: "change_reason", label: "Correction" },
     ],
     fields: [
       { name: "staff_id", label: "Staff", type: "ref", ref: "staff", required: true },
