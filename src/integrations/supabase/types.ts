@@ -578,6 +578,7 @@ export type Database = {
       }
       staff_attendance: {
         Row: {
+          change_reason: string | null
           created_at: string
           date: string
           id: string
@@ -588,6 +589,7 @@ export type Database = {
           status: string
         }
         Insert: {
+          change_reason?: string | null
           created_at?: string
           date: string
           id?: string
@@ -598,6 +600,7 @@ export type Database = {
           status: string
         }
         Update: {
+          change_reason?: string | null
           created_at?: string
           date?: string
           id?: string
@@ -627,6 +630,7 @@ export type Database = {
       staff_payments: {
         Row: {
           amount: number
+          calculated_amount: number | null
           change_reason: string | null
           client_token: string | null
           created_at: string
@@ -645,6 +649,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          calculated_amount?: number | null
           change_reason?: string | null
           client_token?: string | null
           created_at?: string
@@ -663,6 +668,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          calculated_amount?: number | null
           change_reason?: string | null
           client_token?: string | null
           created_at?: string
@@ -698,6 +704,7 @@ export type Database = {
       }
       staff_sessions: {
         Row: {
+          category: string | null
           created_at: string
           designation: string
           id: string
@@ -709,6 +716,7 @@ export type Database = {
           status: string
         }
         Insert: {
+          category?: string | null
           created_at?: string
           designation?: string
           id?: string
@@ -720,6 +728,7 @@ export type Database = {
           status?: string
         }
         Update: {
+          category?: string | null
           created_at?: string
           designation?: string
           id?: string
@@ -755,6 +764,7 @@ export type Database = {
           created_by: string | null
           due_date: string | null
           id: string
+          installment: string | null
           remarks: string | null
           session_id: string
           student_id: string
@@ -766,6 +776,7 @@ export type Database = {
           created_by?: string | null
           due_date?: string | null
           id?: string
+          installment?: string | null
           remarks?: string | null
           session_id: string
           student_id: string
@@ -777,6 +788,7 @@ export type Database = {
           created_by?: string | null
           due_date?: string | null
           id?: string
+          installment?: string | null
           remarks?: string | null
           session_id?: string
           student_id?: string
