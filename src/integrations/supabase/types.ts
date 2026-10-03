@@ -1186,32 +1186,38 @@ export type Database = {
       vehicle_assignments: {
         Row: {
           created_at: string
+          effective_from: string | null
           fuel_rate_per_km: number
           id: string
           remarks: string | null
           route: string | null
           session_id: string
           staff_id: string
+          status: string
           vehicle_id: string
         }
         Insert: {
           created_at?: string
+          effective_from?: string | null
           fuel_rate_per_km?: number
           id?: string
           remarks?: string | null
           route?: string | null
           session_id: string
           staff_id: string
+          status?: string
           vehicle_id: string
         }
         Update: {
           created_at?: string
+          effective_from?: string | null
           fuel_rate_per_km?: number
           id?: string
           remarks?: string | null
           route?: string | null
           session_id?: string
           staff_id?: string
+          status?: string
           vehicle_id?: string
         }
         Relationships: [
@@ -1247,6 +1253,7 @@ export type Database = {
           effective_to: string | null
           id: string
           remarks: string | null
+          session_id: string | null
           start_odometer: number | null
           vehicle_id: string
         }
@@ -1258,6 +1265,7 @@ export type Database = {
           effective_to?: string | null
           id?: string
           remarks?: string | null
+          session_id?: string | null
           start_odometer?: number | null
           vehicle_id: string
         }
@@ -1269,10 +1277,18 @@ export type Database = {
           effective_to?: string | null
           id?: string
           remarks?: string | null
+          session_id?: string | null
           start_odometer?: number | null
           vehicle_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "vehicle_km_defaults_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "academic_sessions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "vehicle_km_defaults_vehicle_id_fkey"
             columns: ["vehicle_id"]

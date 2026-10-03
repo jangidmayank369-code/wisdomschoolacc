@@ -48,11 +48,12 @@ function StudentProfile() {
           {info.map(([k, v]) => <div key={k}><dt className="text-xs text-muted-foreground">{k}</dt><dd>{String(v || "—")}</dd></div>)}
         </dl>
       </Section>
-      <Section title="Academic history">
+      <Section title="Enrollment History">
         {en.length ? <DataTable rows={en} columns={[
           { key: "s", label: "Session", value: (r) => r.academic_sessions?.name }, { key: "class", label: "Class" }, { key: "section", label: "Section" },
           { key: "roll_no", label: "Roll" }, { key: "status", label: "Status" }, { key: "transport_route", label: "Transport" },
-        ]} /> : <Empty text="Not enrolled in any session" />}
+        ]} /> : <Empty text="No enrollment" />}
+        {!cur && <p className="text-sm text-muted-foreground">{session?.name}: No enrollment</p>}
       </Section>
       {cur ? (
         <>
