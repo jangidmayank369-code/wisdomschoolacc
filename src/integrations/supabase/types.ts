@@ -793,10 +793,12 @@ export type Database = {
         Row: {
           category: string | null
           created_at: string
+          created_by: string | null
           designation: string
           id: string
           joining_date: string | null
           monthly_salary: number
+          optional_role: string | null
           remarks: string | null
           session_id: string
           staff_id: string
@@ -805,10 +807,12 @@ export type Database = {
         Insert: {
           category?: string | null
           created_at?: string
+          created_by?: string | null
           designation?: string
           id?: string
           joining_date?: string | null
           monthly_salary?: number
+          optional_role?: string | null
           remarks?: string | null
           session_id: string
           staff_id: string
@@ -817,10 +821,12 @@ export type Database = {
         Update: {
           category?: string | null
           created_at?: string
+          created_by?: string | null
           designation?: string
           id?: string
           joining_date?: string | null
           monthly_salary?: number
+          optional_role?: string | null
           remarks?: string | null
           session_id?: string
           staff_id?: string
@@ -911,6 +917,8 @@ export type Database = {
         Row: {
           class: string
           created_at: string
+          created_by: string | null
+          enrollment_date: string | null
           id: string
           remarks: string | null
           roll_no: string | null
@@ -923,6 +931,8 @@ export type Database = {
         Insert: {
           class: string
           created_at?: string
+          created_by?: string | null
+          enrollment_date?: string | null
           id?: string
           remarks?: string | null
           roll_no?: string | null
@@ -935,6 +945,8 @@ export type Database = {
         Update: {
           class?: string
           created_at?: string
+          created_by?: string | null
+          enrollment_date?: string | null
           id?: string
           remarks?: string | null
           roll_no?: string | null
