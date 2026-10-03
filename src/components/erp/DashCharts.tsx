@@ -8,11 +8,11 @@ const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct
 const label = (ym: string) => `${MON[Number(ym.slice(5, 7)) - 1]} ${ym.slice(2, 4)}`;
 const money = (v: unknown) => inr(num(v));
 
-function Card({ title, empty, children }: { title: string; empty: boolean; children: React.ReactElement }) {
+function Card({ title, empty, emptyText = "No data available", children }: { title: string; empty: boolean; emptyText?: string; children: React.ReactElement }) {
   return (
-    <div className="rounded-lg border bg-card p-3">
+    <div className="rounded-xl border bg-card p-4 shadow-sm">
       <div className="mb-2 text-sm font-semibold">{title}</div>
-      {empty ? <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">No data available</div>
+      {empty ? <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">{emptyText}</div>
         : <div className="h-56"><ResponsiveContainer width="100%" height="100%">{children}</ResponsiveContainer></div>}
     </div>
   );
@@ -56,13 +56,13 @@ export function DashCharts({ tx, pending, collected }: { tx: Tx[]; pending: numb
             <Pie data={[{ name: "Collected", value: collected }, { name: "Pending (session)", value: pending }]} dataKey="value" nameKey="name" outerRadius={75} isAnimationActive={false}>
               <Cell fill={C[2]} /><Cell fill={C[3]} /></Pie></PieChart>
         </Card>
-        <Card title="Salary vs other expenses" empty={!salary && !otherExp}>
+        <Card title="Salary vs other expenses" empty={!salary && !otherExp} emptyText="No expense data available">
           <PieChart><Tooltip formatter={money} /><Legend />
             <Pie data={[{ name: "Salaries", value: salary }, { name: "Other expenses", value: otherExp }]} dataKey="value" nameKey="name" outerRadius={75} isAnimationActive={false}>
               <Cell fill={C[0]} /><Cell fill={C[4]} /></Pie></PieChart>
         </Card>
         <div className="md:col-span-2">
-          <Card title="Expense category breakdown" empty={!catData.length}>
+          <Card title="Expense category breakdown" empty={!catData.length} emptyText="No expense data available">
             <BarChart data={catData} layout="vertical" margin={{ left: 10 }}><CartesianGrid strokeDasharray="3 3" /><XAxis type="number" tick={axis} tickFormatter={yFmt} />
               <YAxis type="category" dataKey="name" tick={axis} width={95} /><Tooltip formatter={money} />
               <Bar dataKey="value" name="Amount" isAnimationActive={false}>{catData.map((_, i) => <Cell key={i} fill={C[i % C.length]} />)}</Bar></BarChart>
