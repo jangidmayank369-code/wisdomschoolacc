@@ -83,8 +83,8 @@ function Dashboard() {
         ids("staff_payments").length ? db.from("staff_payments").select("id, staff(name)").in("id", ids("staff_payments")) : Promise.resolve({ data: [] }),
       ]);
       const names = new Map<string, string>();
-      for (const r of (fp.data ?? []) as { id: string; students: { name: string } | null }[]) names.set(r.id, r.students?.name ?? "");
-      for (const r of (sp.data ?? []) as { id: string; staff: { name: string } | null }[]) names.set(r.id, r.staff?.name ?? "");
+      for (const r of (fp.data ?? []) as unknown as { id: string; students: { name: string } | null }[]) names.set(r.id, r.students?.name ?? "");
+      for (const r of (sp.data ?? []) as unknown as { id: string; staff: { name: string } | null }[]) names.set(r.id, r.staff?.name ?? "");
       return {
         tx: (tx.data ?? []) as { date: string; type: string; category: string; amount: unknown }[],
         bal: ((bal.data ?? []) as Bal[]).map((b) => ({ ...b, total_charges: num(b.total_charges), total_paid: num(b.total_paid) })),
@@ -204,7 +204,7 @@ function Dashboard() {
           <DashCharts tx={q.data.tx} pending={Math.max(0, d.pending)} collected={d.paid} />
 
           <div className="grid gap-3 xl:grid-cols-2">
-            <Panel title="Recent transactions" action={<Button asChild size="sm" variant="outline"><Link to="/m/accounts">View all</Link></Button>}>
+            <Panel title="Recent transactions" action={<Button asChild size="sm" variant="outline"><Link to="/m/$module" params={{ module: "accounts" }}>View all</Link></Button>}>
               {!q.data.recent.length ? <p className="py-6 text-center text-sm text-muted-foreground">No data available</p> : (
                 <div className="overflow-x-auto"><table className="w-full text-sm">
                   <thead className="text-left text-xs text-muted-foreground"><tr><th className="py-1.5 pr-2">Date</th><th className="pr-2">Type</th><th className="pr-2">Description</th><th className="pr-2">Student/Staff</th><th className="pr-2 text-right">Amount</th><th>Status</th></tr></thead>
