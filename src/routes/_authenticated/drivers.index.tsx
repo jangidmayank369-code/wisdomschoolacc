@@ -19,7 +19,7 @@ function Drivers() {
     enabled: !!session,
     queryFn: async () => {
       const [ss, va] = await Promise.all([
-        db.from("staff_sessions").select("*, staff(employee_id, name, mobile)").eq("session_id", session!.id).ilike("designation", "driver"),
+        db.from("staff_sessions").select("*, staff(employee_id, name, mobile)").eq("session_id", session!.id).eq("status", "active").or("designation.ilike.driver,optional_role.ilike.driver"),
         db.from("vehicle_assignments").select("staff_id, route, vehicles(vehicle_no)").eq("session_id", session!.id),
       ]);
       if (ss.error) throw ss.error;

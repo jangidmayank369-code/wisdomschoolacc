@@ -14,6 +14,7 @@ import { sum } from "@/lib/finance";
 import { DataTable } from "./DataTable";
 import { FormDialog } from "./FormDialog";
 import { ImportDialog } from "./ImportDialog";
+import { SessionImportDialog } from "./SessionImportDialog";
 import { Empty, ErrorState, Loading, PageHeader } from "./States";
 
 const selectCls = "h-10 rounded-md border border-input bg-background px-2 text-sm";
@@ -190,6 +191,7 @@ export function ResourcePage({ moduleKey, where, embedded, title, allSessions }:
   const toolbar = (
     <>
       {canWrite && !m.noAdd && <Button size="sm" onClick={() => setEditing(null)}><Plus className="h-4 w-4" />{m.addLabel ?? "Add"}</Button>}
+      {isAdmin && m.sessionImport && !where && <SessionImportDialog kind={m.sessionImport} />}
       {canImport && <Button size="sm" variant="outline" onClick={() => setImportOpen(true)}><Upload className="h-4 w-4" />Import</Button>}
       {canImport && <Button size="sm" variant="outline" onClick={() => downloadSample(m)}><FileDown className="h-4 w-4" />Sample</Button>}
       <Button size="sm" variant="outline" disabled={!rows.length} onClick={() => exportRows(m, rows, session?.name)}><Download className="h-4 w-4" />Export</Button>
