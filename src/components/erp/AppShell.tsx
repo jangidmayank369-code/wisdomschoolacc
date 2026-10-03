@@ -124,15 +124,26 @@ export function AppShell({ children }: { children: ReactNode }) {
             <button aria-label="Sign out" title="Sign out" onClick={signOut} className="rounded-md p-2 hover:bg-accent"><LogOut className="h-4 w-4" /></button>
           </div>
         </header>
-        <main className="mx-auto max-w-7xl p-3 pb-24 sm:p-5 lg:pb-8">{children}</main>
+        <main className="mx-auto max-w-7xl p-3 pb-[calc(96px+env(safe-area-inset-bottom))] sm:p-5 sm:pb-[calc(96px+env(safe-area-inset-bottom))] lg:pb-8">{children}</main>
       </div>
-      <nav className="no-print fixed inset-x-0 bottom-0 z-30 grid border-t bg-card lg:hidden" style={{ gridTemplateColumns: `repeat(${quick.length + 1}, 1fr)` }}>
-        {quick.map((i) => (
-          <Link key={i.to} to={i.to} className={`flex flex-col items-center gap-0.5 py-2 text-[11px] ${loc.pathname.startsWith(i.to) ? "font-semibold text-primary" : "text-muted-foreground"}`}>
-            <i.icon className="h-5 w-5" />{i.label}
-          </Link>
-        ))}
-        <button onClick={() => setOpen(true)} className="flex flex-col items-center gap-0.5 py-2 text-[11px] text-muted-foreground"><Menu className="h-5 w-5" />More</button>
+      {/* Single mobile bottom nav: fixed to the viewport (outside all scroll/transform containers), above page content, below dialogs (z-50+). */}
+      <nav aria-label="Main" className="no-print fixed inset-x-0 bottom-0 z-[45] w-full rounded-t-[18px] bg-nav px-2 pt-1.5 shadow-[0_-6px_20px_rgb(0_0_0/0.18)] lg:hidden"
+        style={{ paddingBottom: "max(8px, env(safe-area-inset-bottom))", transform: "translateZ(0)" }}>
+        <div className="grid h-[64px]" style={{ gridTemplateColumns: `repeat(${quick.length + 1}, minmax(0, 1fr))` }}>
+          {quick.map((i) => {
+            const active = loc.pathname === i.to || loc.pathname.startsWith(i.to + "/");
+            return (
+              <Link key={i.to} to={i.to} aria-current={active ? "page" : undefined} className="flex min-w-0 flex-col items-center justify-center gap-1">
+                <span className={`flex h-8 w-14 items-center justify-center rounded-full ${active ? "bg-nav-active text-nav-foreground" : "text-nav-muted"}`}><i.icon className="h-[22px] w-[22px]" /></span>
+                <span className={`truncate text-[11.5px] leading-none ${active ? "font-semibold text-nav-foreground" : "text-nav-muted"}`}>{i.label}</span>
+              </Link>
+            );
+          })}
+          <button onClick={() => setOpen(true)} className="flex min-w-0 flex-col items-center justify-center gap-1">
+            <span className={`flex h-8 w-14 items-center justify-center rounded-full ${open ? "bg-nav-active text-nav-foreground" : "text-nav-muted"}`}><Menu className="h-[22px] w-[22px]" /></span>
+            <span className="text-[11.5px] leading-none text-nav-muted">More</span>
+          </button>
+        </div>
       </nav>
     </div>
   );
