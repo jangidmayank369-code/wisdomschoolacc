@@ -59,13 +59,14 @@ function Payroll() {
     enabled: !!sid,
     queryFn: async () => {
       const [ss, att, pays, pp] = await Promise.all([
-        db.from("staff_sessions").select("*, staff(employee_id, name)").eq("session_id", sid).eq("status", "active"),
+        db.from("staff_sessions").select("*, staff(employee_id, name, status)").eq("session_id", sid).eq("status", "active"),
         db.from("staff_attendance").select("staff_id, date, status").eq("session_id", sid).gte("date", m0).lte("date", monthEnd(m0)),
         db.from("staff_payments").select("staff_id, amount").eq("session_id", sid).eq("payroll_month", m0).eq("is_reversed", false),
         db.from("payroll_periods").select("*").eq("session_id", sid).eq("month", m0),
       ]);
       if (ss.error) throw ss.error;
-      return (ss.data ?? []).map((s) => ({
+      // Eligible: active employment in this session, joined on/before month end (joining month included), staff not left.
+      return (ss.data ?? []).filter((s) => payrollEligible(s.joining_date, s.staff?.status, m0)).map((s) => ({
         id: s.staff_id, staff_id: s.staff_id, name: `${s.staff?.name} (${s.staff?.employee_id})`, designation: s.designation,
         ...payrollRow({
           monthlySalary: Number(s.monthly_salary),
