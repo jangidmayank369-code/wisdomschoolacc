@@ -72,3 +72,10 @@ export const fuelSummary = (totalKm: number, ratePerKm: number, actualPaid: numb
   const estimated = Math.round(num(totalKm) * num(ratePerKm) * 100) / 100;
   return { estimated, actual: num(actualPaid), variance: Math.round((estimated - num(actualPaid)) * 100) / 100 };
 };
+
+/** Payroll eligibility for a month (YYYY-MM-01): joined on/before month end (joining month included) and not left. */
+export function payrollEligible(joiningDate: string | null | undefined, staffStatus: string | null | undefined, monthStart: string) {
+  if (staffStatus && staffStatus !== "active") return false;
+  if (!joiningDate) return true;
+  return joiningDate.slice(0, 7) <= monthStart.slice(0, 7);
+}
