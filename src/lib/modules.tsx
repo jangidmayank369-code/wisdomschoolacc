@@ -42,6 +42,9 @@ export type ModuleDef = {
   dateField?: string;
   searchCols?: string[];
   filters?: { name: string; label: string; options: string[] }[];
+  defaultFilters?: Row;
+  /** Staff list: filter people by active employment in a session (defaults to selected session) */
+  employmentFilter?: boolean;
   fixed?: Row;
   insertDefaults?: Row;
   columns: Column[];
@@ -246,10 +249,12 @@ export const MODULES: ModuleDef[] = [
     ],
   },
   {
-    key: "staff", title: "Staff", table: "staff", select: "*", sessionScoped: false, orderBy: "employee_id",
-    searchCols: ["name", "employee_id", "mobile"], filters: [{ name: "status", label: "Status", options: STATUS }],
+    key: "staff", title: "Staff", table: "staff", select: "*, staff_sessions(session_id, status, designation, academic_sessions(name, start_date))", sessionScoped: false, orderBy: "employee_id",
+    searchCols: ["name", "employee_id", "mobile"], filters: [{ name: "status", label: "Status", options: STATUS }], employmentFilter: true,
     writeRoles: ["admin"], rowLink: (r) => `/staff/${r.id}`, addLabel: "Add Staff",
-    columns: [{ key: "employee_id", label: "Emp ID" }, { key: "name", label: "Name" }, { key: "mobile", label: "Mobile" }, { key: "email", label: "Email" }, { key: "status", label: "Status" }],
+    columns: [{ key: "employee_id", label: "Emp ID" }, { key: "name", label: "Name" }, { key: "mobile", label: "Mobile" },
+      { key: "sessions", label: "Sessions", value: (r) => ((r.staff_sessions ?? []) as Row[]).slice().sort((a, b) => String(a.academic_sessions?.start_date).localeCompare(String(b.academic_sessions?.start_date))).map((x) => x.academic_sessions?.name + (x.status === "active" ? "" : ` (${x.status})`)).join(", ") },
+      { key: "status", label: "Status" }],
     fields: [
       { name: "employee_id", label: "Employee ID", type: "text", required: true },
       { name: "name", label: "Name", type: "text", required: true },
@@ -276,13 +281,15 @@ export const MODULES: ModuleDef[] = [
     ],
   },
   {
-    key: "staff_sessions", title: "Staff Sessions (Employment)", table: "staff_sessions", select: "*, staff(employee_id, name)",
-    sessionScoped: true, orderBy: "created_at", filters: [{ name: "status", label: "Status", options: STATUS }],
+    key: "staff_sessions", title: "Employment", table: "staff_sessions", select: "*, staff(employee_id, name), academic_sessions(name)",
+    sessionScoped: true, orderBy: "created_at", filters: [{ name: "status", label: "Status", options: STATUS }], defaultFilters: { status: "active" },
     writeRoles: ["admin"], rowLink: (r) => `/staff/${r.staff_id}`, addLabel: "Add Employment (this session)",
     columns: [
-      { key: "staff", label: "Staff", value: st }, { key: "category", label: "Category" }, { key: "designation", label: "Designation" },
+      { key: "session", label: "Session", value: (r) => r.academic_sessions?.name },
+      { key: "emp", label: "Staff ID", value: (r) => r.staff?.employee_id }, { key: "sname", label: "Staff Name", value: (r) => r.staff?.name },
+      { key: "category", label: "Category" }, { key: "designation", label: "Designation" },
       { key: "joining_date", label: "Joining", render: (r) => fmtDate(r.joining_date) },
-      { key: "monthly_salary", label: "Salary", money: true }, { key: "daily", label: "Daily (÷30)", value: (r) => inr(Number(r.monthly_salary) / 30) },
+      { key: "monthly_salary", label: "Monthly Salary", money: true },
       { key: "status", label: "Status" },
     ],
     fields: [

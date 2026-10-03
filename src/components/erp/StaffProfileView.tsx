@@ -137,15 +137,19 @@ export function StaffProfileView({ staffId, driver, self }: { staffId: string; d
         </Section>
       )}
 
-      <Section title="Session history">
-        {d.sessions.length ? (
-          <DataTable rows={d.sessions.map((x) => ({ ...x, id: x.id }))} columns={[
-            { key: "s", label: "Session", value: (r) => r.academic_sessions?.name }, { key: "joining_date", label: "Joining", render: (r) => fmtDate(r.joining_date) },
-            { key: "designation", label: "Designation" }, { key: "monthly_salary", label: "Salary", money: true },
-            { key: "daily", label: "Daily", value: (r) => inr(dailySalary(r.monthly_salary)) }, { key: "status", label: "Status" },
-          ]} />
-        ) : <Empty text="No employment records" />}
-      </Section>
+      {self ? (
+        <Section title="Employment history">
+          {d.sessions.length ? (
+            <DataTable rows={d.sessions.map((x) => ({ ...x, id: x.id }))} columns={[
+              { key: "s", label: "Session", value: (r) => r.academic_sessions?.name }, { key: "category", label: "Category" },
+              { key: "designation", label: "Designation" }, { key: "monthly_salary", label: "Salary", money: true },
+              { key: "joining_date", label: "Joining", render: (r) => fmtDate(r.joining_date) }, { key: "status", label: "Status" },
+            ]} />
+          ) : <Empty text="No employment records" />}
+        </Section>
+      ) : (
+        <ResourcePage moduleKey="staff_sessions" where={{ staff_id: staffId }} embedded allSessions title="Employment history (all sessions)" />
+      )}
 
       <Section title={`Complete salary history · Due ${inr(all.due)} · Paid ${inr(all.paid)} · Balance ${inr(all.due - all.paid)}`}>
         {history.length ? <DataTable columns={histCols} rows={[...history].reverse()} pageSize={12} /> : <Empty />}
