@@ -1171,7 +1171,39 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      v_student_balances: {
+        Row: {
+          admission_no: string | null
+          class: string | null
+          father_name: string | null
+          name: string | null
+          phone: string | null
+          roll_no: string | null
+          section: string | null
+          session_id: string | null
+          status: string | null
+          student_id: string | null
+          student_session_id: string | null
+          total_charges: number | null
+          total_paid: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_sessions_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "academic_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_sessions_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       has_role: {
