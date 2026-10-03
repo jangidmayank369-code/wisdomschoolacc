@@ -24,13 +24,14 @@ type Correction = { row: Row; kind: "reverse" | "date" | "status" | "km" | "amou
  * add/edit + import/sample/export/print + financial reversal/correction.
  * `where` restricts rows (e.g. one student) and pre-fills new records.
  */
-export function ResourcePage({ moduleKey, where, embedded, title }: { moduleKey: string; where?: Row; embedded?: boolean; title?: string }) {
+export function ResourcePage({ moduleKey, where, embedded, title, allSessions }: { moduleKey: string; where?: Row; embedded?: boolean; title?: string; allSessions?: boolean }) {
   const m = getModule(moduleKey)!;
-  const { session, isAdmin, roles, staffId, user } = useApp();
+  const { session, sessions, isAdmin, roles, staffId, user } = useApp();
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [q, setQ] = useState("");
-  const [filters, setFilters] = useState<Row>({});
+  const [filters, setFilters] = useState<Row>(allSessions || embedded ? {} : m.defaultFilters ?? {});
+  const [empSid, setEmpSid] = useState<string | null>(null);
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [editing, setEditing] = useState<Row | null | undefined>(undefined);
@@ -39,15 +40,16 @@ export function ResourcePage({ moduleKey, where, embedded, title }: { moduleKey:
 
   const canWrite = m.writeRoles.some((r) => roles.includes(r));
   const sid = session?.id ?? null;
+  const empSession = empSid ?? sid ?? "";
   const qk = ["mod", m.key, sid, where, filters, from, to];
 
   const list = useQuery({
     queryKey: qk,
-    enabled: !m.sessionScoped || !!sid,
+    enabled: !m.sessionScoped || allSessions || !!sid,
     queryFn: async () => {
       if (m.table === "driver_km_logs" && isAdmin) await db.rpc("generate_km_logs", {});
       let query = db.from(m.table).select(m.select);
-      if (m.sessionScoped) query = query.eq("session_id", sid);
+      if (m.sessionScoped && !allSessions) query = query.eq("session_id", sid);
       for (const [k, v] of Object.entries({ ...m.fixed, ...where, ...filters })) if (v) query = query.eq(k, v);
       if (m.dateField && from) query = query.gte(m.dateField, from);
       if (m.dateField && to) query = query.lte(m.dateField, to);
@@ -65,11 +67,12 @@ export function ResourcePage({ moduleKey, where, embedded, title }: { moduleKey:
   });
 
   const rows = useMemo(() => {
-    const all = list.data ?? [];
+    let all = list.data ?? [];
+    if (m.employmentFilter && empSession) all = all.filter((r) => ((r.staff_sessions ?? []) as Row[]).some((x) => x.session_id === empSession && x.status === "active"));
     if (!q.trim()) return all;
     const s = q.toLowerCase();
     return all.filter((r) => m.columns.some((c) => String(c.value ? c.value(r) : r[c.key] ?? "").toLowerCase().includes(s)));
-  }, [list.data, q, m.columns]);
+  }, [list.data, q, m.columns, m.employmentFilter, empSession]);
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["mod"] });
@@ -195,7 +198,7 @@ export function ResourcePage({ moduleKey, where, embedded, title }: { moduleKey:
     <div className="space-y-3">
       {embedded
         ? <div className="no-print flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">{title ?? m.title}</h3><div className="flex flex-wrap gap-2">{toolbar}</div></div>
-        : <PageHeader title={m.title} subtitle={m.sessionScoped ? `Session ${session?.name ?? "— none selected"}` : "All sessions (master records)"} actions={toolbar} />}
+        : <PageHeader title={m.title} subtitle={m.sessionScoped ? `Showing data for: ${session?.name ?? "— none selected"}` : "All sessions (master records)"} actions={toolbar} />}
 
       {!embedded && (
         <div className="no-print flex flex-wrap gap-2">
@@ -203,6 +206,12 @@ export function ResourcePage({ moduleKey, where, embedded, title }: { moduleKey:
             <Search className="absolute left-2.5 top-3 h-4 w-4 text-muted-foreground" />
             <Input className="h-10 pl-8" placeholder="Search…" value={q} onChange={(e) => setQ(e.target.value)} />
           </div>
+          {m.employmentFilter && (
+            <select aria-label="Session" className={selectCls} value={empSession} onChange={(e) => setEmpSid(e.target.value)}>
+              <option value="">All Sessions</option>
+              {sessions.map((x) => <option key={x.id} value={x.id}>Employed in {x.name}</option>)}
+            </select>
+          )}
           {m.filters?.map((f) => (
             <select key={f.name} className={selectCls} value={filters[f.name] ?? ""} onChange={(e) => setFilters({ ...filters, [f.name]: e.target.value })}>
               <option value="">{f.label}: All</option>
