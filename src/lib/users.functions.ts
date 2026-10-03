@@ -34,7 +34,7 @@ async function createAuthUser(input: z.infer<typeof newUser>, role: "admin" | "a
 
 /** First-run only: creates the first admin. Refuses once any admin exists. */
 export const setupFirstAdmin = createServerFn({ method: "POST" })
-  .inputValidator((d) => newUser.parse(d))
+  .validator((d) => newUser.parse(d))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { count } = await supabaseAdmin.from("user_roles").select("id", { count: "exact", head: true }).eq("role", "admin");
@@ -45,7 +45,7 @@ export const setupFirstAdmin = createServerFn({ method: "POST" })
 /** Admin creates a login for admin / accountant / staff (optionally linked to a staff record). */
 export const createUserAccount = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => newUser.extend({ role: z.enum(["admin", "accountant", "staff"]), staff_id: z.string().uuid().nullable().optional() }).parse(d))
+  .validator((d) => newUser.extend({ role: z.enum(["admin", "accountant", "staff"]), staff_id: z.string().uuid().nullable().optional() }).parse(d))
   .handler(async ({ data, context }) => {
     const { data: ok } = await context.supabase.rpc("has_role", { _user_id: context.userId, _role: "admin" });
     if (!ok) throw new Error("Only admin can create users");
