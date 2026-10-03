@@ -15,11 +15,17 @@ export function attendanceSummary(rows: AttendanceRow[]) {
 }
 
 /**
- * Payroll for one staff member and one month.
- * Working days = 30. Approved leave counts as paid. Half day = 0.5 absent.
- * Salary is NOT auto-deducted: due = monthly salary (or payroll override).
- * "Attendance-based amount" is shown for reference with a warning when absent > 4.
+ * Absence deduction rule (approved leave is never counted as absence):
+ * 0–1 absent → 0 days; 2 → 1; 3 → 2; 4 → 3;
+ * >4 absent → pay only actual payable days (30 − absent − half days × 0.5).
  */
+export function deductionDays(absent: number, halfDays: number) {
+  if (absent <= 1) return 0;
+  if (absent <= ABSENT_WARNING_DAYS) return absent - 1;
+  return absent + halfDays * 0.5;
+}
+
+/** Payroll for one staff member and one month (fixed 30-day month). */
 export function payrollRow(opts: {
   monthlySalary: number;
   dueOverride?: number | null;
@@ -27,20 +33,25 @@ export function payrollRow(opts: {
   paid: number;
 }) {
   const a = attendanceSummary(opts.attendance);
-  const daily = dailySalary(opts.monthlySalary);
-  const paidDays = Math.max(0, DAYS_PER_MONTH - a.absent - a.half_day * 0.5);
-  const due = opts.dueOverride != null ? num(opts.dueOverride) : num(opts.monthlySalary);
+  const monthly = num(opts.monthlySalary);
+  const daily = dailySalary(monthly);
+  const deduction = deductionDays(a.absent, a.half_day);
+  const paidDays = Math.max(0, DAYS_PER_MONTH - deduction);
+  const calculated = Math.max(0, Math.round((monthly - (monthly / DAYS_PER_MONTH) * deduction) * 100) / 100);
+  const due = opts.dueOverride != null ? num(opts.dueOverride) : calculated;
   const paid = num(opts.paid);
   return {
-    monthly: num(opts.monthlySalary),
+    monthly,
     daily,
     workingDays: DAYS_PER_MONTH,
     ...a,
+    deduction,
     paidDays,
-    attendanceAmount: Math.round(paidDays * daily * 100) / 100,
+    calculated,
+    attendanceAmount: calculated,
     due,
     paid,
-    balance: Math.round((due - paid) * 100) / 100,
+    balance: Math.max(0, Math.round((due - paid) * 100) / 100),
     warning: a.absent > ABSENT_WARNING_DAYS,
   };
 }
