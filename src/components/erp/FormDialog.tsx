@@ -5,7 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { today, errMsg } from "@/lib/format";
-import type { Field, Row } from "@/lib/modules";
+import type { Field, Row, MasterKind } from "@/lib/modules";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { db, useApp } from "@/lib/app-context";
 import type { RefMaps } from "@/lib/refs";
 
 const selectCls = "flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring";
@@ -51,7 +53,9 @@ export function FormFields({ fields, values, setValues, errors, refs }: {
         const id = `f-${f.name}`;
         const wide = f.type === "textarea";
         let input;
-        if (f.type === "select") {
+        if (f.master) {
+          input = <MasterSelect id={id} kind={f.master} value={values[f.name] ?? ""} onChange={(v) => set(f.name, v)} />;
+        } else if (f.type === "select") {
           input = (
             <select id={id} className={selectCls} value={values[f.name] ?? ""} onChange={(e) => set(f.name, e.target.value)}>
               <option value="">— Select —</option>
@@ -128,5 +132,31 @@ export function FormDialog({ open, onOpenChange, title, fields, record, refs, on
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+export const MASTER_LABEL: Record<MasterKind, string> = { maintenance_category: "Maintenance Category", staff_category: "Staff Category", designation: "Designation" };
+
+/** Dropdown fed by a master list; admin gets "+ Add New". Keeps an existing (even inactive) value visible. */
+function MasterSelect({ id, kind, value, onChange }: { id: string; kind: MasterKind; value: string; onChange: (v: string) => void }) {
+  const { isAdmin } = useApp();
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["master", kind], queryFn: async () => (await db.from("master_items").select("name").eq("kind", kind).eq("is_active", true).order("name")).data ?? [] });
+  const names: string[] = (q.data ?? []).map((r: Row) => r.name);
+  if (value && !names.includes(value)) names.unshift(value);
+  return (
+    <select id={id} className={selectCls} value={value} onChange={async (e) => {
+      if (e.target.value !== "__new") return onChange(e.target.value);
+      const name = prompt(`New ${MASTER_LABEL[kind]}`)?.trim();
+      if (!name) return;
+      const { error } = await db.from("master_items").insert({ kind, name });
+      if (error && error.code !== "23505") return alert(errMsg(error));
+      await qc.invalidateQueries({ queryKey: ["master", kind] });
+      onChange(name);
+    }}>
+      <option value="">— Select —</option>
+      {names.map((n) => <option key={n} value={n}>{n}</option>)}
+      {isAdmin && <option value="__new">+ Add New {MASTER_LABEL[kind]}</option>}
+    </select>
   );
 }

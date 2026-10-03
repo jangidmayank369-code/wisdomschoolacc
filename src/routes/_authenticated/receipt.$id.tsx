@@ -36,7 +36,7 @@ function Receipt() {
   const rows: [string, string][] = [
     ["Receipt No", p.receipt_no], ["Date", fmtDate(p.payment_date)], ["Session", p.academic_sessions?.name],
     ["Student", p.students?.name], ["Adm/SR No", p.students?.admission_no], ["Father", p.students?.father_name ?? "—"],
-    ["Class", en ? `${en.class}${en.section ? "-" + en.section : ""}` : "—"], ["Fee", p.fee_categories?.name ?? "Fees"],
+    ["Class", en ? `${en.class}${en.section ? "-" + en.section : ""}` : "—"], ["Fee", p.category_name ?? p.fee_categories?.name ?? "Fees"],
     ["Payment mode", p.mode + (p.reference ? ` (${p.reference})` : "")], ["Received by", p.received_by ?? "—"],
   ];
   return (

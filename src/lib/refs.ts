@@ -27,7 +27,7 @@ export async function loadRefs(kinds: RefKind[], sessionId: string | null): Prom
         const { data } = await db.from("vehicles").select("id, vehicle_no, model").order("vehicle_no");
         out.vehicle = (data ?? []).map((r) => ({ id: r.id, code: r.vehicle_no, label: `${r.vehicle_no}${r.model ? " — " + r.model : ""}` }));
       } else if (k === "fee_category") {
-        const { data } = await db.from("fee_categories").select("id, name").order("name");
+        const { data } = await db.from("fee_categories").select("id, name").eq("is_active", true).order("name");
         out.fee_category = (data ?? []).map((r) => ({ id: r.id, code: r.name, label: r.name }));
       }
     }),

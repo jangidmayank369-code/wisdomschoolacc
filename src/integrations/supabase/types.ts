@@ -79,36 +79,51 @@ export type Database = {
       }
       driver_km_logs: {
         Row: {
+          change_reason: string | null
           created_at: string
           date: string
           id: string
+          is_auto: boolean
+          is_override: boolean
           km: number
           recorded_by: string | null
           remarks: string | null
           session_id: string
           staff_id: string
+          updated_at: string | null
+          updated_by: string | null
           vehicle_id: string
         }
         Insert: {
+          change_reason?: string | null
           created_at?: string
           date: string
           id?: string
+          is_auto?: boolean
+          is_override?: boolean
           km: number
           recorded_by?: string | null
           remarks?: string | null
           session_id: string
           staff_id: string
+          updated_at?: string | null
+          updated_by?: string | null
           vehicle_id: string
         }
         Update: {
+          change_reason?: string | null
           created_at?: string
           date?: string
           id?: string
+          is_auto?: boolean
+          is_override?: boolean
           km?: number
           recorded_by?: string | null
           remarks?: string | null
           session_id?: string
           staff_id?: string
+          updated_at?: string | null
+          updated_by?: string | null
           vehicle_id?: string
         }
         Relationships: [
@@ -153,14 +168,17 @@ export type Database = {
       fee_categories: {
         Row: {
           id: string
+          is_active: boolean
           name: string
         }
         Insert: {
           id?: string
+          is_active?: boolean
           name: string
         }
         Update: {
           id?: string
+          is_active?: boolean
           name?: string
         }
         Relationships: []
@@ -169,6 +187,7 @@ export type Database = {
         Row: {
           amount: number
           category_id: string | null
+          category_name: string | null
           change_reason: string | null
           client_token: string | null
           created_at: string
@@ -188,6 +207,7 @@ export type Database = {
         Insert: {
           amount: number
           category_id?: string | null
+          category_name?: string | null
           change_reason?: string | null
           client_token?: string | null
           created_at?: string
@@ -207,6 +227,7 @@ export type Database = {
         Update: {
           amount?: number
           category_id?: string | null
+          category_name?: string | null
           change_reason?: string | null
           client_token?: string | null
           created_at?: string
@@ -435,29 +456,77 @@ export type Database = {
           },
         ]
       }
-      payroll_periods: {
+      master_items: {
         Row: {
           created_at: string
           id: string
+          is_active: boolean
+          kind: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          kind: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          kind?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      payroll_periods: {
+        Row: {
+          absent_days: number | null
+          change_reason: string | null
+          corrected_at: string | null
+          corrected_by: string | null
+          created_at: string
+          half_days: number | null
+          id: string
+          leave_days: number | null
           month: string
+          payable_days: number | null
+          present_days: number | null
           remarks: string | null
           salary_due: number
           session_id: string
           staff_id: string
         }
         Insert: {
+          absent_days?: number | null
+          change_reason?: string | null
+          corrected_at?: string | null
+          corrected_by?: string | null
           created_at?: string
+          half_days?: number | null
           id?: string
+          leave_days?: number | null
           month: string
+          payable_days?: number | null
+          present_days?: number | null
           remarks?: string | null
           salary_due: number
           session_id: string
           staff_id: string
         }
         Update: {
+          absent_days?: number | null
+          change_reason?: string | null
+          corrected_at?: string | null
+          corrected_by?: string | null
           created_at?: string
+          half_days?: number | null
           id?: string
+          leave_days?: number | null
           month?: string
+          payable_days?: number | null
+          present_days?: number | null
           remarks?: string | null
           salary_due?: number
           session_id?: string
@@ -486,18 +555,27 @@ export type Database = {
           email: string | null
           full_name: string
           id: string
+          is_active: boolean
+          mobile: string | null
+          username: string | null
         }
         Insert: {
           created_at?: string
           email?: string | null
           full_name?: string
           id: string
+          is_active?: boolean
+          mobile?: string | null
+          username?: string | null
         }
         Update: {
           created_at?: string
           email?: string | null
           full_name?: string
           id?: string
+          is_active?: boolean
+          mobile?: string | null
+          username?: string | null
         }
         Relationships: []
       }
@@ -633,6 +711,8 @@ export type Database = {
           calculated_amount: number | null
           change_reason: string | null
           client_token: string | null
+          corrected_at: string | null
+          corrected_by: string | null
           created_at: string
           created_by: string | null
           id: string
@@ -644,6 +724,7 @@ export type Database = {
           reference: string | null
           remarks: string | null
           reversal_reason: string | null
+          salary_days: number | null
           session_id: string
           staff_id: string
         }
@@ -652,6 +733,8 @@ export type Database = {
           calculated_amount?: number | null
           change_reason?: string | null
           client_token?: string | null
+          corrected_at?: string | null
+          corrected_by?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -663,6 +746,7 @@ export type Database = {
           reference?: string | null
           remarks?: string | null
           reversal_reason?: string | null
+          salary_days?: number | null
           session_id: string
           staff_id: string
         }
@@ -671,6 +755,8 @@ export type Database = {
           calculated_amount?: number | null
           change_reason?: string | null
           client_token?: string | null
+          corrected_at?: string | null
+          corrected_by?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -682,6 +768,7 @@ export type Database = {
           reference?: string | null
           remarks?: string | null
           reversal_reason?: string | null
+          salary_days?: number | null
           session_id?: string
           staff_id?: string
         }
@@ -760,6 +847,7 @@ export type Database = {
         Row: {
           amount: number
           category_id: string
+          category_name: string | null
           created_at: string
           created_by: string | null
           due_date: string | null
@@ -772,6 +860,7 @@ export type Database = {
         Insert: {
           amount: number
           category_id: string
+          category_name?: string | null
           created_at?: string
           created_by?: string | null
           due_date?: string | null
@@ -784,6 +873,7 @@ export type Database = {
         Update: {
           amount?: number
           category_id?: string
+          category_name?: string | null
           created_at?: string
           created_by?: string | null
           due_date?: string | null
@@ -1148,6 +1238,50 @@ export type Database = {
           },
         ]
       }
+      vehicle_km_defaults: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          daily_km: number
+          effective_from: string
+          effective_to: string | null
+          id: string
+          remarks: string | null
+          start_odometer: number | null
+          vehicle_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          daily_km: number
+          effective_from: string
+          effective_to?: string | null
+          id?: string
+          remarks?: string | null
+          start_odometer?: number | null
+          vehicle_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          daily_km?: number
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          remarks?: string | null
+          start_odometer?: number | null
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_km_defaults_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vehicles: {
         Row: {
           capacity: number | null
@@ -1218,6 +1352,7 @@ export type Database = {
       }
     }
     Functions: {
+      generate_km_logs: { Args: { _upto?: string }; Returns: number }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

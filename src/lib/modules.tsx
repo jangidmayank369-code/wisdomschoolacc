@@ -23,7 +23,10 @@ export type Field = {
   /** Only shown when creating */
   createOnly?: boolean;
   adminOnly?: boolean;
+  /** Load options from a master list (Settings → Masters) */
+  master?: MasterKind;
 };
+export type MasterKind = "maintenance_category" | "staff_category" | "designation";
 export type Column = { key: string; label: string; render?: (r: Row) => ReactNode; value?: (r: Row) => unknown; money?: boolean };
 export type ImportCol = { header: string; field: string; type?: "text" | "number" | "date" | "month" | RefKind | "session"; required?: boolean; example: string; note?: string };
 export type Row = Record<string, any>;
@@ -86,7 +89,6 @@ const ensureStudentSession = async ({ sessionId, record, values }: SaveCtx) => {
   });
   if (error && error.code !== "23505") throw error;
 };
-const STAFF_CATS = ["Teacher", "Accountant", "Peon", "Driver", "Other"];
 const ensureStaffSession = async ({ sessionId, record, values }: SaveCtx) => {
   const designation = values.designation || values.category;
   if (!designation || !sessionId) return;
@@ -199,7 +201,7 @@ export const MODULES: ModuleDef[] = [
     sessionScoped: true, orderBy: "created_at", dateField: "due_date", writeRoles: ["admin", "accountant"], rowLink: (r) => `/students/${r.student_id}`,
     addLabel: "Add Manual Fee/Charge", confirmSave: true,
     columns: [
-      { key: "student", label: "Student", value: s }, { key: "category", label: "Category", value: (r) => r.fee_categories?.name },
+      { key: "student", label: "Student", value: s }, { key: "category", label: "Category", value: (r) => r.category_name ?? r.fee_categories?.name },
       { key: "installment", label: "Month/Inst." },
       { key: "amount", label: "Amount", money: true }, { key: "due_date", label: "Due", render: (r) => fmtDate(r.due_date) }, { key: "remarks", label: "Description" },
     ],
@@ -256,8 +258,8 @@ export const MODULES: ModuleDef[] = [
       { name: "gender", label: "Gender", type: "select", options: ["Male", "Female", "Other"] },
       { name: "address", label: "Address", type: "textarea" },
       { name: "status", label: "Status", type: "select", options: STATUS, default: "active" },
-      { name: "category", label: "Staff category (selected session)", type: "select", options: STAFF_CATS, virtual: true, createOnly: true, default: "Teacher" },
-      { name: "designation", label: "Designation (selected session)", type: "text", virtual: true, createOnly: true },
+      { name: "category", label: "Staff category (selected session)", type: "select", master: "staff_category", virtual: true, createOnly: true },
+      { name: "designation", label: "Designation (selected session)", type: "select", master: "designation", virtual: true, createOnly: true },
       { name: "monthly_salary", label: "Monthly salary (₹)", type: "number", virtual: true, createOnly: true },
       { name: "joining_date", label: "Joining date", type: "date", virtual: true, createOnly: true },
     ],
@@ -286,8 +288,8 @@ export const MODULES: ModuleDef[] = [
     fields: [
       { name: "staff_id", label: "Staff", type: "ref", ref: "staff", required: true, createOnly: true },
       { name: "joining_date", label: "Joining date", type: "date" },
-      { name: "category", label: "Staff category", type: "select", options: STAFF_CATS, default: "Teacher" },
-      { name: "designation", label: "Designation", type: "text", required: true, default: "Teacher" },
+      { name: "category", label: "Staff category", type: "select", master: "staff_category" },
+      { name: "designation", label: "Designation", type: "select", master: "designation", required: true },
       { name: "monthly_salary", label: "Monthly salary (₹)", type: "number", required: true },
       { name: "status", label: "Status", type: "select", options: STATUS, default: "active" },
       { name: "remarks", label: "Remarks", type: "textarea" },
@@ -307,7 +309,8 @@ export const MODULES: ModuleDef[] = [
     columns: [
       { key: "payment_date", label: "Date", render: (r) => fmtDate(r.payment_date) }, { key: "staff", label: "Staff", value: st },
       { key: "payroll_month", label: "Month", render: (r) => fmtMonth(r.payroll_month) }, { key: "amount", label: "Amount", money: true },
-      { key: "mode", label: "Mode" }, { key: "paid_by", label: "Paid by" }, { key: "reference", label: "Ref" },
+      { key: "salary_days", label: "Days" }, { key: "calculated_amount", label: "Calculated", money: true },
+      { key: "mode", label: "Mode" }, { key: "paid_by", label: "Paid by" }, { key: "reference", label: "Ref" }, { key: "change_reason", label: "Correction" },
     ],
     fields: [
       { name: "staff_id", label: "Staff", type: "ref", ref: "staff", required: true },
@@ -411,7 +414,9 @@ export const MODULES: ModuleDef[] = [
     sessionScoped: true, orderBy: "date", dateField: "date", writeRoles: ["admin"], rowLink: (r) => `/drivers/${r.staff_id}`,
     columns: [
       { key: "date", label: "Date", render: (r) => fmtDate(r.date) }, { key: "staff", label: "Driver", value: st },
-      { key: "vehicle", label: "Vehicle", value: (r) => r.vehicles?.vehicle_no }, { key: "km", label: "KM" }, { key: "remarks", label: "Remarks" },
+      { key: "vehicle", label: "Vehicle", value: (r) => r.vehicles?.vehicle_no }, { key: "km", label: "KM" },
+      { key: "kind", label: "Type", value: (r) => (r.is_override ? "Corrected" : r.is_auto ? "Auto" : "Manual") },
+      { key: "change_reason", label: "Correction" },
     ],
     fields: [
       { name: "staff_id", label: "Driver", type: "ref", ref: "driver", required: true },
@@ -464,7 +469,7 @@ export const MODULES: ModuleDef[] = [
       { name: "date", label: "Date", type: "date", required: true },
       { name: "work", label: "Work done", type: "text", required: true },
       { name: "location", label: "Location", type: "text" },
-      { name: "category", label: "Category", type: "select", options: ["Building", "Electrical", "Plumbing", "Furniture", "Cleaning", "Other"] },
+      { name: "category", label: "Category", type: "select", master: "maintenance_category" },
       { name: "vendor", label: "Vendor", type: "text" },
       { name: "bill_no", label: "Bill number", type: "text" },
       { name: "amount", label: "Amount (₹)", type: "number", required: true },
@@ -495,6 +500,25 @@ export const MODULES: ModuleDef[] = [
     columns: txnCols, fields: txnFields(), importCols: txnImport(true),
   },
 ];
+
+MODULES.push({
+  key: "km_defaults", title: "Vehicle Daily KM Settings", table: "vehicle_km_defaults", select: "*, vehicles(vehicle_no)",
+  sessionScoped: false, orderBy: "effective_from", writeRoles: ["admin"], addLabel: "Add Daily KM Setting",
+  columns: [
+    { key: "vehicle", label: "Vehicle", value: (r) => r.vehicles?.vehicle_no }, { key: "daily_km", label: "KM / day" },
+    { key: "effective_from", label: "From", render: (r) => fmtDate(r.effective_from) },
+    { key: "effective_to", label: "To", render: (r) => (r.effective_to ? fmtDate(r.effective_to) : "Ongoing") },
+    { key: "start_odometer", label: "Start odometer" }, { key: "remarks", label: "Remarks" },
+  ],
+  fields: [
+    { name: "vehicle_id", label: "Vehicle", type: "ref", ref: "vehicle", required: true },
+    { name: "daily_km", label: "Default daily KM", type: "number", required: true },
+    { name: "effective_from", label: "Effective from", type: "date", required: true },
+    { name: "effective_to", label: "Effective to (optional)", type: "date" },
+    { name: "start_odometer", label: "Starting odometer (optional)", type: "number" },
+    { name: "remarks", label: "Remarks", type: "text" },
+  ],
+});
 
 export const getModule = (key: string) => MODULES.find((m) => m.key === key);
 export const IMPORT_MODULES = MODULES.filter((m) => m.importCols);

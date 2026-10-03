@@ -22,6 +22,13 @@
       "when": 1791004350013,
       "tag": "0002_erp_update_fees_salary_attendance",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791005603700,
+      "tag": "0003_masters_km_payroll_users",
+      "breakpoints": true
     }
   ]
 }
