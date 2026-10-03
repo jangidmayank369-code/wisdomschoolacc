@@ -16,8 +16,8 @@ export async function loadRefs(kinds: RefKind[], sessionId: string | null): Prom
         const { data } = await db.from("staff").select("id, employee_id, name").order("employee_id").limit(5000);
         out.staff = (data ?? []).map((r) => ({ id: r.id, code: r.employee_id, label: `${r.employee_id} — ${r.name}` }));
       } else if (k === "driver") {
-        let q = db.from("staff_sessions").select("staff_id, staff(employee_id, name)").ilike("designation", "driver");
-        if (sessionId) q = q.eq("session_id", sessionId);
+        let q = db.from("staff_sessions").select("staff_id, staff(employee_id, name)").ilike("designation", "driver").eq("status", "active");
+        q = q.eq("session_id", sessionId ?? "00000000-0000-0000-0000-000000000000");
         const { data } = await q;
         // drivers list; fall back to all staff for code lookup in imports
         out.driver = (data ?? []).map((r: any) => ({

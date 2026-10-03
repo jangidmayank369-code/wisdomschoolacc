@@ -45,10 +45,13 @@ export function ResourcePage({ moduleKey, where, embedded, title, allSessions }:
 
   const list = useQuery({
     queryKey: qk,
-    enabled: !m.sessionScoped || allSessions || !!sid,
+    enabled: !(m.sessionScoped || m.sessionJoin) || allSessions || !!sid,
     queryFn: async () => {
       if (m.table === "driver_km_logs" && isAdmin) await db.rpc("generate_km_logs", {});
-      let query = db.from(m.table).select(m.select);
+      const join = m.sessionJoin && !allSessions && !where ? m.sessionJoin : null;
+      if (join && !sid) return [];
+      let query = db.from(m.table).select(join ? `${m.select}, ${join.table}!inner(${join.select})` : m.select);
+      if (join) query = query.eq(`${join.table}.session_id`, sid);
       if (m.sessionScoped && !allSessions) query = query.eq("session_id", sid);
       for (const [k, v] of Object.entries({ ...m.fixed, ...where, ...filters })) if (v) query = query.eq(k, v);
       if (m.dateField && from) query = query.gte(m.dateField, from);
@@ -198,7 +201,7 @@ export function ResourcePage({ moduleKey, where, embedded, title, allSessions }:
     <div className="space-y-3">
       {embedded
         ? <div className="no-print flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">{title ?? m.title}</h3><div className="flex flex-wrap gap-2">{toolbar}</div></div>
-        : <PageHeader title={m.title} subtitle={m.sessionScoped ? `Showing data for: ${session?.name ?? "— none selected"}` : "All sessions (master records)"} actions={toolbar} />}
+        : <PageHeader title={m.title} subtitle={m.sessionScoped || m.sessionJoin ? `Showing data for: ${session?.name ?? "— none selected"}` : "All sessions (master records)"} actions={toolbar} />}
 
       {!embedded && (
         <div className="no-print flex flex-wrap gap-2">

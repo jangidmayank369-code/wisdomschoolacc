@@ -45,6 +45,8 @@ export type ModuleDef = {
   defaultFilters?: Row;
   /** Staff list: filter people by active employment in a session (defaults to selected session) */
   employmentFilter?: boolean;
+  /** Master list shown per session through a linked session table (inner join on session_id). */
+  sessionJoin?: { table: string; select: string };
   fixed?: Row;
   insertDefaults?: Row;
   columns: Column[];
@@ -132,11 +134,14 @@ const txnImport = (withType: boolean): ImportCol[] => [
 export const MODULES: ModuleDef[] = [
   {
     key: "students", title: "Students", table: "students", select: "*", sessionScoped: false, orderBy: "admission_no",
+    sessionJoin: { table: "student_sessions", select: "session_id, class, section, status" }, addLabel: "Add Student (this session)",
     searchCols: ["name", "admission_no", "father_name", "phone"], filters: [{ name: "status", label: "Status", options: ["active", "left", "passed"] }],
     writeRoles: ["admin", "accountant"], rowLink: (r) => `/students/${r.id}`,
     columns: [
       { key: "admission_no", label: "Adm/SR No" }, { key: "name", label: "Name" }, { key: "father_name", label: "Father" },
-      { key: "phone", label: "Phone" }, { key: "status", label: "Status" },
+      { key: "phone", label: "Phone" },
+      { key: "cls", label: "Class (session)", value: (r) => r.student_sessions?.[0] ? `${r.student_sessions[0].class}${r.student_sessions[0].section ? "-" + r.student_sessions[0].section : ""}` : "" },
+      { key: "status", label: "Status" },
     ],
     fields: [
       { name: "admission_no", label: "Admission / SR No", type: "text", required: true },
@@ -378,9 +383,10 @@ export const MODULES: ModuleDef[] = [
     ],
   },
   {
-    key: "vehicles", title: "Vehicles", table: "vehicles", select: "*", sessionScoped: false, orderBy: "vehicle_no", searchCols: ["vehicle_no", "model", "registration"],
+    key: "vehicles", title: "Vehicles", table: "vehicles", select: "*", sessionScoped: false, addLabel: "Add Vehicle (then assign in this session)",
+    sessionJoin: { table: "vehicle_assignments", select: "session_id, route, status, staff(name)" }, orderBy: "vehicle_no", searchCols: ["vehicle_no", "model", "registration"],
     writeRoles: ["admin"],
-    columns: [{ key: "vehicle_no", label: "Vehicle No" }, { key: "type", label: "Type" }, { key: "model", label: "Model" }, { key: "capacity", label: "Capacity" }, { key: "registration", label: "Registration" }, { key: "status", label: "Status" }],
+    columns: [{ key: "vehicle_no", label: "Vehicle No" }, { key: "drv", label: "Driver (session)", value: (r) => r.vehicle_assignments?.[0]?.staff?.name }, { key: "rt", label: "Route", value: (r) => r.vehicle_assignments?.[0]?.route }, { key: "type", label: "Type" }, { key: "model", label: "Model" }, { key: "capacity", label: "Capacity" }, { key: "registration", label: "Registration" }, { key: "status", label: "Status" }],
     fields: [
       { name: "vehicle_no", label: "Vehicle number", type: "text", required: true },
       { name: "type", label: "Type", type: "select", options: ["Bus", "Van", "Auto", "Car", "Other"] },
@@ -401,12 +407,15 @@ export const MODULES: ModuleDef[] = [
     columns: [
       { key: "vehicle", label: "Vehicle", value: (r) => r.vehicles?.vehicle_no }, { key: "staff", label: "Driver", value: st },
       { key: "route", label: "Route" }, { key: "fuel_rate_per_km", label: "Fuel ₹/KM", money: true },
+      { key: "effective_from", label: "From", render: (r) => fmtDate(r.effective_from) }, { key: "status", label: "Status" },
     ],
     fields: [
       { name: "vehicle_id", label: "Vehicle", type: "ref", ref: "vehicle", required: true },
       { name: "staff_id", label: "Driver", type: "ref", ref: "driver", required: true },
       { name: "route", label: "Route", type: "text" },
       { name: "fuel_rate_per_km", label: "Fuel rate per KM (₹)", type: "number", default: "0" },
+      { name: "effective_from", label: "Effective from", type: "date" },
+      { name: "status", label: "Status", type: "select", options: ["active", "inactive"], default: "active" },
       { name: "remarks", label: "Remarks", type: "textarea" },
     ],
     importCols: [
@@ -510,7 +519,7 @@ export const MODULES: ModuleDef[] = [
 
 MODULES.push({
   key: "km_defaults", title: "Vehicle Daily KM Settings", table: "vehicle_km_defaults", select: "*, vehicles(vehicle_no)",
-  sessionScoped: false, orderBy: "effective_from", writeRoles: ["admin"], addLabel: "Add Daily KM Setting",
+  sessionScoped: true, orderBy: "effective_from", writeRoles: ["admin"], addLabel: "Add Daily KM Setting",
   columns: [
     { key: "vehicle", label: "Vehicle", value: (r) => r.vehicles?.vehicle_no }, { key: "daily_km", label: "KM / day" },
     { key: "effective_from", label: "From", render: (r) => fmtDate(r.effective_from) },
