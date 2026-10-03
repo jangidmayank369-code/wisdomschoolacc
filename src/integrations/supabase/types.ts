@@ -1381,6 +1381,7 @@ export type Database = {
     }
     Functions: {
       generate_km_logs: { Args: { _upto?: string }; Returns: number }
+      has_any_role: { Args: never; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
