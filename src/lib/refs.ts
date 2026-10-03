@@ -20,7 +20,7 @@ export async function loadRefs(kinds: RefKind[], sessionId: string | null): Prom
         if (sessionId) q = q.eq("session_id", sessionId);
         const { data } = await q;
         // drivers list; fall back to all staff for code lookup in imports
-        out.driver = (data ?? []).map((r: { staff_id: string; staff: { employee_id: string; name: string } | null }) => ({
+        out.driver = (data ?? []).map((r: any) => ({
           id: r.staff_id, code: r.staff?.employee_id ?? "", label: `${r.staff?.employee_id} — ${r.staff?.name}`,
         }));
       } else if (k === "vehicle") {

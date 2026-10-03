@@ -62,8 +62,8 @@ function Attendance() {
           {q.data.staff.map((s) => (
             <div key={s.staff_id} className="flex items-center justify-between gap-2 rounded-lg border bg-card p-2.5">
               <div className="min-w-0">
-                <div className="truncate text-sm font-semibold">{s.staff?.name}</div>
-                <div className="text-xs text-muted-foreground">{s.staff?.employee_id} · {s.designation}{q.data.leave.has(s.staff_id) ? " · approved leave" : ""}</div>
+                <div className="truncate text-sm font-semibold">{(s.staff as any)?.name}</div>
+                <div className="text-xs text-muted-foreground">{(s.staff as any)?.employee_id} · {s.designation}{q.data.leave.has(s.staff_id) ? " · approved leave" : ""}</div>
               </div>
               <div className="flex shrink-0 gap-1">
                 {OPTS.map(([v, l]) => (
