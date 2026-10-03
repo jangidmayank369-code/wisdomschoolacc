@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { db, useApp } from "@/lib/app-context";
 import { errMsg, fmtDate } from "@/lib/format";
 import { loadRefs } from "@/lib/refs";
-import { createUserAccount, listUsers } from "@/lib/users.functions";
+import { createUserAccount, listUsers, setUserPassword, updateUserAccount } from "@/lib/users.functions";
+import { MastersPanel } from "@/components/erp/MastersPanel";
 import type { Field, Row } from "@/lib/modules";
 import { DataTable } from "@/components/erp/DataTable";
 import { FormDialog, FormFields } from "@/components/erp/FormDialog";
@@ -37,11 +38,26 @@ const userFields: Field[] = [
   { name: "staff_id", label: "Link to staff record (for staff role)", type: "ref", ref: "staff" },
 ];
 
+const editUserFields: Field[] = [
+  { name: "full_name", label: "Full name", type: "text", required: true },
+  { name: "email", label: "Email (login)", type: "text", required: true },
+  { name: "mobile", label: "Mobile", type: "text" },
+  { name: "username", label: "Username", type: "text" },
+  { name: "role", label: "Role (sets permissions)", type: "select", options: ["admin", "accountant", "staff"], required: true },
+  { name: "status", label: "Account status", type: "select", options: ["Active", "Inactive"], required: true },
+  { name: "staff_id", label: "Link to staff record", type: "ref", ref: "staff" },
+];
+const pwFields: Field[] = [{ name: "password", label: "New password (min 8)", type: "text", required: true }];
+
 function Settings() {
   const { sessions, reload, isAdmin } = useApp();
   const qc = useQueryClient();
   const [addSession, setAddSession] = useState(false);
   const [addUser, setAddUser] = useState(false);
+  const [editUser, setEditUser] = useState<Row | null>(null);
+  const [pwUser, setPwUser] = useState<Row | null>(null);
+  const updateUserFn = useServerFn(updateUserAccount);
+  const setPwFn = useServerFn(setUserPassword);
   const [school, setSchool] = useState<Row>({});
   const listUsersFn = useServerFn(listUsers);
   const createUserFn = useServerFn(createUserAccount);
@@ -49,7 +65,7 @@ function Settings() {
   const settings = useQuery({ queryKey: ["settings"], queryFn: async () => (await db.from("school_settings").select("*").eq("id", 1).single()).data });
   useEffect(() => { if (settings.data) setSchool(Object.fromEntries(schoolFields.map((f) => [f.name, settings.data?.[f.name] ?? ""]))); }, [settings.data]);
   const users = useQuery({ queryKey: ["users"], enabled: isAdmin, queryFn: () => listUsersFn() });
-  const staffRefs = useQuery({ queryKey: ["refs", "staff-all"], enabled: addUser, queryFn: () => loadRefs(["staff"], null) });
+  const staffRefs = useQuery({ queryKey: ["refs", "staff-all"], enabled: addUser || !!editUser, queryFn: () => loadRefs(["staff"], null) });
 
   const setCurrent = async (id: string) => {
     await db.from("academic_sessions").update({ is_current: false }).eq("is_current", true);
@@ -83,10 +99,30 @@ function Settings() {
         {users.isLoading ? <Loading /> : users.error ? <p className="text-sm text-destructive">{errMsg(users.error)}</p> : (
           <DataTable rows={(users.data ?? []) as Row[]} columns={[
             { key: "full_name", label: "Name" }, { key: "email", label: "Email" }, { key: "roles", label: "Roles", value: (r) => r.roles.join(", ") },
+            { key: "mobile", label: "Mobile" }, { key: "is_active", label: "Status", value: (r) => (r.is_active === false ? "Inactive" : "Active") },
             { key: "staff", label: "Staff link", value: (r) => (r.staff ? `${r.staff.name} (${r.staff.employee_id})` : "") },
-          ]} />
+          ]} actions={(r) => <span className="flex gap-3">
+            <button className="text-sm text-primary underline" onClick={() => setEditUser(r)}>Edit</button>
+            <button className="text-sm text-primary underline" onClick={() => setPwUser(r)}>Password</button>
+          </span>} />
         )}
       </Section>
+
+      {isAdmin && <Section title="Masters"><MastersPanel /></Section>}
+
+      <FormDialog open={!!editUser} onOpenChange={(o) => !o && setEditUser(null)} title={`Edit user — ${editUser?.email ?? ""}`} fields={editUserFields} refs={staffRefs.data ?? {}}
+        record={editUser && { ...editUser, role: editUser.roles?.[0] ?? "staff", status: editUser.is_active === false ? "Inactive" : "Active", staff_id: (staffRefs.data?.staff ?? []).find((s) => s.code === editUser.staff?.employee_id)?.id ?? "" }}
+        onSubmit={async (v) => {
+          if (!confirm("Save changes to this user?")) throw new Error("Cancelled — nothing saved");
+          await updateUserFn({ data: { id: editUser!.id, full_name: v.full_name, email: v.email, mobile: v.mobile, username: v.username, role: v.role, is_active: v.status === "Active", staff_id: v.staff_id || null } });
+          toast.success("User updated"); qc.invalidateQueries({ queryKey: ["users"] });
+        }} />
+      <FormDialog open={!!pwUser} onOpenChange={(o) => !o && setPwUser(null)} title={`Set new password — ${pwUser?.email ?? ""}`} fields={pwFields} refs={{}} submitLabel="Change password"
+        onSubmit={async (v) => {
+          if (!confirm(`Change password for ${pwUser!.email}?`)) throw new Error("Cancelled — nothing saved");
+          await setPwFn({ data: { id: pwUser!.id, password: v.password } });
+          toast.success("Password changed. Share it securely with the user.");
+        }} />
 
       <FormDialog open={addSession} onOpenChange={setAddSession} title="Add academic session" fields={sessionFields} refs={{}}
         onSubmit={async (v) => {
