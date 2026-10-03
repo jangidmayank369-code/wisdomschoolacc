@@ -28,6 +28,8 @@ const cols: Column[] = [
   { key: "due", label: "Due", money: true }, { key: "paid", label: "Paid", money: true }, { key: "balance", label: "Balance", money: true },
 ];
 
+const payFieldsList = getModule("staff_payments")!.fields.filter((f) => f.name !== "staff_id" && f.name !== "payroll_month").map((f) => f.name === "amount" ? { ...f, label: "Amount to pay (₹)" } : f);
+
 function Payroll() {
   const { session, user } = useApp();
   const qc = useQueryClient();
@@ -61,7 +63,6 @@ function Payroll() {
   });
 
   const rows = q.data ?? [];
-  const payFieldsList = getModule("staff_payments")!.fields.filter((f) => f.name !== "staff_id" && f.name !== "payroll_month").map((f) => f.name === "amount" ? { ...f, label: "Amount to pay (₹)" } : f);
 
   return (
     <div className="space-y-4">
