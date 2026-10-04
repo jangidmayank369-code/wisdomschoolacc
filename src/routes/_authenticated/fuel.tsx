@@ -45,10 +45,11 @@ function FuelSummary() {
     queryKey: ["fuel-summary", sid],
     enabled: !!sid,
     queryFn: async () => {
+      if (!sid) throw new Error("Select an academic session first");
       const [km, rates, exp, veh] = await Promise.all([
-        db.from("monthly_vehicle_km").select("id, month, total_km, vehicle_id, staff(name)").eq("session_id", sid!),
-        db.from("fuel_rates").select("month, fuel_type, rate_per_litre").eq("session_id", sid!).eq("status", "active"),
-        db.from("transport_expenses").select("date, amount, vehicle_id").eq("session_id", sid!).eq("is_reversed", false).eq("expense_type", "Fuel"),
+        db.from("monthly_vehicle_km").select("id, month, total_km, vehicle_id, staff(name)").eq("session_id", sid),
+        db.from("fuel_rates").select("month, fuel_type, rate_per_litre").eq("session_id", sid).eq("status", "active"),
+        db.from("transport_expenses").select("date, amount, vehicle_id").eq("session_id", sid).eq("is_reversed", false).eq("expense_type", "Fuel"),
         db.from("vehicles").select("id, vehicle_no, fuel_average_kmpl"),
       ]);
       const err = km.error ?? rates.error ?? exp.error ?? veh.error;
@@ -90,7 +91,7 @@ function FuelSummary() {
   return (
     <div className="space-y-2">
        <p className="text-sm text-muted-foreground">Estimate uses whole monthly KM, floored KM/L, whole litres, and the floored monthly rate. Accounts use actual fuel expenses only.</p>
-      <DataTable rows={rows} columns={[
+      <DataTable rows={rows} mobileColumnLimit={11} columns={[
         { key: "month", label: "Month", value: (r) => fmtMonth(r.month + "-01") }, { key: "vehicle", label: "Vehicle" }, { key: "driver", label: "Driver" },
         { key: "km", label: "Total KM", value: (r) => `${r.km.toLocaleString("en-IN")} KM` },
         { key: "avg", label: "Average Used", value: (r) => dash(r.avg, (n) => `${n} KM/L`) },

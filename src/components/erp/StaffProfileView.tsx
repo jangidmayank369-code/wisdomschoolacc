@@ -22,7 +22,8 @@ const histCols: Column[] = [
 const driverMonthCols: Column[] = [
   { key: "month", label: "Month", render: (r) => fmtMonth(r.month) },
   { key: "salaryDue", label: "Salary Due", money: true }, { key: "salaryPaid", label: "Salary Paid", money: true }, { key: "salaryBalance", label: "Salary Balance", money: true },
-  { key: "fuelEstimated", label: "Fuel Estimated", money: true }, { key: "fuelPaid", label: "Fuel Paid", money: true }, { key: "fuelBalance", label: "Fuel Balance", money: true },
+  { key: "fuelEstimated", label: "Fuel Estimated", render: (r) => r.fuelEstimated == null ? "Fuel rate not set" : inr(r.fuelEstimated) },
+  { key: "fuelPaid", label: "Fuel Paid", money: true }, { key: "fuelBalance", label: "Fuel Balance", render: (r) => r.fuelBalance == null ? "—" : inr(r.fuelBalance) },
 ];
 
 /** Staff profile; also used for Driver profile (driver=true) and the staff's own dashboard. */
@@ -147,11 +148,11 @@ export function StaffProfileView({ staffId, driver, self }: { staffId: string; d
             <StatCard label="Optional role" value={cur.optional_role || "—"} />
             <StatCard label="Joining date" value={fmtDate(cur.joining_date) || "—"} />
             <StatCard label="Exit date" value={fmtDate(cur.exit_date) || "—"} />
-            <StatCard label="Monthly salary" value={cur.monthly_salary} money />
-            <StatCard label="Daily salary (÷30)" value={dailySalary(cur.monthly_salary)} money />
-            <StatCard label="Salary due (session)" value={tot.due} money />
-            <StatCard label="Salary paid" value={tot.paid} money tone="good" />
-            <StatCard label="Salary balance" value={tot.due - tot.paid} money tone={tot.due - tot.paid > 0 ? "warn" : undefined} />
+            {!driver && <StatCard label="Monthly salary" value={cur.monthly_salary} money />}
+            {!driver && <StatCard label="Daily salary (÷30)" value={dailySalary(cur.monthly_salary)} money />}
+            {!driver && <StatCard label="Salary due (session)" value={tot.due} money />}
+            {!driver && <StatCard label="Salary paid" value={tot.paid} money tone="good" />}
+            {!driver && <StatCard label="Salary balance" value={tot.due - tot.paid} money tone={tot.due - tot.paid > 0 ? "warn" : undefined} />}
             {self && <StatCard label="Today's attendance" value={todayAtt?.status ?? "Not marked"} />}
           </StatGrid>
           {curMonths.some((m) => m.warning) && (

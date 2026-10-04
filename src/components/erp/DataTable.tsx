@@ -12,8 +12,8 @@ export const cellValue = (c: Column, r: Row): ReactNode => {
 };
 
 /** Shared table: desktop = table, mobile = cards. Client-side pagination. */
-export function DataTable({ columns, rows, actions, onRowClick, pageSize = 25, rowClass }: {
-  columns: Column[]; rows: Row[]; actions?: (r: Row) => ReactNode; onRowClick?: (r: Row) => void; pageSize?: number; rowClass?: (r: Row) => string;
+export function DataTable({ columns, rows, actions, onRowClick, pageSize = 25, rowClass, mobileColumnLimit = 8 }: {
+  columns: Column[]; rows: Row[]; actions?: (r: Row) => ReactNode; onRowClick?: (r: Row) => void; pageSize?: number; rowClass?: (r: Row) => string; mobileColumnLimit?: number;
 }) {
   const [page, setPage] = useState(0);
   const pages = Math.max(1, Math.ceil(rows.length / pageSize));
@@ -31,7 +31,7 @@ export function DataTable({ columns, rows, actions, onRowClick, pageSize = 25, r
               <div className="shrink-0 text-sm font-medium">{columns[1] && cellValue(columns[1], r)}</div>
             </div>
             <dl className="mt-1 grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs">
-              {columns.slice(2, 8).map((c) => (
+              {columns.slice(2, mobileColumnLimit).map((c) => (
                 <div key={c.key} className="min-w-0 truncate"><span className="text-muted-foreground">{c.label}: </span>{cellValue(c, r)}</div>
               ))}
             </dl>
