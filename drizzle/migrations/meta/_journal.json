@@ -78,6 +78,13 @@
       "when": 1791101389127,
       "tag": "0010_add_staff_session_exit_dates",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791103187000,
+      "tag": "0011_monthly_vehicle_km",
+      "breakpoints": true
     }
   ]
 }
