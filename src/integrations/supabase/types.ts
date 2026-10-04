@@ -527,6 +527,73 @@ export type Database = {
         }
         Relationships: []
       }
+      monthly_vehicle_km: {
+        Row: {
+          change_reason: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          month: string
+          remarks: string | null
+          session_id: string
+          staff_id: string
+          total_km: number
+          updated_at: string | null
+          updated_by: string | null
+          vehicle_id: string
+        }
+        Insert: {
+          change_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          month: string
+          remarks?: string | null
+          session_id: string
+          staff_id: string
+          total_km: number
+          updated_at?: string | null
+          updated_by?: string | null
+          vehicle_id: string
+        }
+        Update: {
+          change_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          month?: string
+          remarks?: string | null
+          session_id?: string
+          staff_id?: string
+          total_km?: number
+          updated_at?: string | null
+          updated_by?: string | null
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "monthly_vehicle_km_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "academic_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "monthly_vehicle_km_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "monthly_vehicle_km_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payroll_periods: {
         Row: {
           absent_days: number | null
