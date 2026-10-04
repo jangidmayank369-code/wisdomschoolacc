@@ -17,6 +17,7 @@ const monthCols: Column[] = [
 const histCols: Column[] = [
   { key: "session", label: "Session" }, { key: "month", label: "Month", render: (r) => fmtMonth(r.month) },
   { key: "due", label: "Due", money: true }, { key: "paid", label: "Paid", money: true }, { key: "balance", label: "Balance", money: true },
+  { key: "credit", label: "Credit / overpayment", money: true },
 ];
 const ledgerCols: Column[] = [
   { key: "date", label: "Date", render: (r) => fmtDate(r.date) }, { key: "kind", label: "Type" },
@@ -66,7 +67,7 @@ export function StaffProfileView({ staffId, driver, self }: { staffId: string; d
     for (const month of monthsBetween(start, end)) {
       const over = d.pp.find((p) => p.session_id === ses.session_id && p.month === month);
       const paid = sum(d.pays.filter((p) => p.session_id === ses.session_id && p.payroll_month === month), (p) => p.amount);
-      const eligibility = employmentMonthEligibility({ joiningDate: ses.joining_date, exitDate: ses.exit_date, employmentStatus: ses.status,
+      const eligibility = employmentMonthEligibility({ joiningDate: ses.joining_date, exitDate: ses.exit_date, employmentStatus: ses.status === "inactive" ? "active" : ses.status,
         sessionStart: a.start_date, sessionEnd: a.end_date, monthStart: month });
       const due = over ? Number(over.salary_due) : Math.round(dailySalary(Number(ses.monthly_salary)) * eligibility.eligibleDays * 100) / 100;
       history.push({ id: ses.session_id + month, session: a.name, session_id: ses.session_id, month, due, paid, balance: Math.max(0, due - paid), credit: Math.max(0, paid - due), eligibleDays: eligibility.eligibleDays });

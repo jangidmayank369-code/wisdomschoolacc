@@ -14,7 +14,11 @@ import { FormDialog } from "@/components/erp/FormDialog";
 import { Empty, ErrorState, Loading, PageHeader, StatCard, StatGrid } from "@/components/erp/States";
 
 export const Route = createFileRoute("/_authenticated/payroll")({
-  head: () => ({ meta: [{ title: "Payroll — WPS Doomra ERP" }] }),
+  head: () => ({ meta: [
+    { title: "Payroll — WPS Doomra ERP" }, { name: "description", content: "Session payroll, attendance deductions, eligible days and salary payments for Wisdom Public School." },
+    { property: "og:title", content: "Payroll — WPS Doomra ERP" }, { property: "og:description", content: "Session payroll and salary payments for Wisdom Public School." },
+    { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" },
+  ] }),
   component: Payroll,
 });
 
@@ -73,15 +77,17 @@ function Payroll() {
         const staffPays = (pays.data ?? []).filter((p) => p.staff_id === s.staff_id);
         const historical = !!period || staffPays.length > 0;
         if (!eligibility.eligible && !historical) return null;
+        const calculationDays = !eligibility.eligible && historical ? 30 : eligibility.eligibleDays;
         return {
         id: s.staff_id, staff_id: s.staff_id, name: `${s.staff?.name} (${s.staff?.employee_id})`, designation: s.designation,
-        eligibleDays: eligibility.eligibleDays, exit_date: s.exit_date, review: !eligibility.eligible && historical,
+        eligibleDays: calculationDays, canPay: eligibility.eligible, exit_date: s.exit_date,
+        review: !!s.exit_date && m0.slice(0, 7) > s.exit_date.slice(0, 7) && historical,
         ...payrollRow({
           monthlySalary: Number(s.monthly_salary),
           dueOverride: period?.salary_due ?? null,
           override: period && period.present_days != null ? { present: Number(period.present_days), absent: Number(period.absent_days ?? 0), half_day: Number(period.half_days ?? 0), leave: Number(period.leave_days ?? 0), payableDays: period.payable_days != null ? Number(period.payable_days) : null } : null,
           attendance: (att.data ?? []).filter((a) => a.staff_id === s.staff_id),
-          paid: sum(staffPays, (p) => p.amount), eligibleDays: eligibility.eligibleDays,
+          paid: sum(staffPays, (p) => p.amount), eligibleDays: calculationDays,
         }),
       }}).filter((r): r is NonNullable<typeof r> => r != null);
     },
@@ -109,7 +115,7 @@ function Payroll() {
           <DataTable columns={cols} rows={rows} rowClass={(r) => (r.review ? "bg-destructive/10" : r.warning ? "bg-warning/10" : "")}
             onRowClick={(r) => nav({ to: "/staff/$id", params: { id: r.staff_id } })}
             actions={(r) => <span className="flex gap-3">
-              {r.balance > 0 && !r.review ? <button className="text-sm font-semibold text-primary underline" onClick={() => { setDays(String(r.paidDays)); setPay(r); }}>Pay</button> : r.review ? <span className="text-xs font-semibold text-destructive">Review</span> : <span className="text-xs text-success">Paid</span>}
+              {r.balance > 0 && r.canPay && !r.review ? <button className="text-sm font-semibold text-primary underline" onClick={() => { setDays(String(r.paidDays)); setPay(r); }}>Pay</button> : r.review ? <span className="text-xs font-semibold text-destructive">Review</span> : !r.canPay ? <span className="text-xs text-muted-foreground">Historical</span> : <span className="text-xs text-success">Paid</span>}
               {isAdmin && <button className="text-sm text-primary underline" onClick={() => setFix(r)}>Correct attendance</button>}
             </span>} />
         </>

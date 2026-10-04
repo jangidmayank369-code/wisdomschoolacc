@@ -11,7 +11,11 @@ import { ResourcePage } from "@/components/erp/ResourcePage";
 import { Empty, ErrorState, Loading, PageHeader } from "@/components/erp/States";
 
 export const Route = createFileRoute("/_authenticated/fuel")({
-  head: () => ({ meta: [{ title: "Fuel & Transport — WPS Doomra ERP" }, { name: "description", content: "Daily KM, monthly fuel rates, fuel estimates and actual fuel expenses." }] }),
+  head: () => ({ meta: [
+    { title: "Fuel & Transport — WPS Doomra ERP" }, { name: "description", content: "Daily KM, monthly fuel rates, fuel estimates and actual fuel expenses." },
+    { property: "og:title", content: "Fuel & Transport — WPS Doomra ERP" }, { property: "og:description", content: "Session transport mileage, fuel estimates and actual expenses for Wisdom Public School." },
+    { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" },
+  ] }),
   component: FuelPage,
 });
 
