@@ -448,7 +448,7 @@ export const MODULES: ModuleDef[] = [
       { name: "staff_id", label: "Driver", type: "ref", ref: "driver", required: true },
       { name: "total_km", label: "Total KM", type: "number", required: true },
       { name: "remarks", label: "Remarks", type: "text" },
-      { name: "change_reason", label: "Reason for editing a saved total", type: "text" },
+      { name: "change_reason", label: "Edit reason (required when updating)", type: "text" },
     ],
     importCols: [
       { header: "vehicle_no", field: "vehicle_id", type: "vehicle", required: true, example: "HR-01-AB-1234" }, sessCol,
