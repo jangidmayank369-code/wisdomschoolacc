@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle } from "lucide-react";
 import { db, useApp } from "@/lib/app-context";
 import { fmtDate, fmtMonth, inr, monthEnd, monthsBetween, today } from "@/lib/format";
-import { dailySalary, fuelEstimate, payrollRow, sum } from "@/lib/finance";
+import { dailySalary, employmentMonthEligibility, fuelEstimate, payrollRow, sum } from "@/lib/finance";
 import type { Column, Row } from "@/lib/modules";
 import { DataTable } from "./DataTable";
 import { ResourcePage } from "./ResourcePage";
@@ -31,7 +31,7 @@ export function StaffProfileView({ staffId, driver, self }: { staffId: string; d
   const q = useQuery({
     queryKey: ["profile", "staff", staffId, sid],
     queryFn: async () => {
-      const [st, ss, pays, pp, att, va, km, fuel] = await Promise.all([
+      const [st, ss, pays, pp, att, va, km, fuel, rates] = await Promise.all([
         db.from("staff").select("*").eq("id", staffId).single(),
         db.from("staff_sessions").select("*, academic_sessions(name, start_date, end_date)").eq("staff_id", staffId),
         db.from("staff_payments").select("*").eq("staff_id", staffId).eq("is_reversed", false),
@@ -40,11 +40,12 @@ export function StaffProfileView({ staffId, driver, self }: { staffId: string; d
         sid ? db.from("vehicle_assignments").select("*, vehicles(vehicle_no, model, fuel_average_kmpl)").eq("staff_id", staffId).eq("session_id", sid).maybeSingle() : Promise.resolve({ data: null, error: null }),
         driver && sid ? db.from("driver_km_logs").select("date, km, vehicles(vehicle_no)").eq("staff_id", staffId).eq("session_id", sid).order("date") : Promise.resolve({ data: [], error: null }),
         driver && sid ? db.from("transport_expenses").select("date, amount, expense_type, mode, paid_by").eq("staff_id", staffId).eq("session_id", sid).eq("is_reversed", false) : Promise.resolve({ data: [], error: null }),
+        driver && sid ? db.from("fuel_rates").select("month, fuel_type, rate_per_litre").eq("session_id", sid).eq("status", "active") : Promise.resolve({ data: [], error: null }),
       ]);
       const err = st.error ?? ss.error ?? pays.error ?? pp.error ?? att.error;
       if (err) throw err;
       return { staff: st.data as Row, sessions: (ss.data ?? []) as Row[], pays: (pays.data ?? []) as Row[], pp: (pp.data ?? []) as Row[],
-        att: (att.data ?? []) as Row[], va: va.data as Row | null, km: (km.data ?? []) as Row[], fuel: (fuel.data ?? []) as Row[] };
+        att: (att.data ?? []) as Row[], va: va.data as Row | null, km: (km.data ?? []) as Row[], fuel: (fuel.data ?? []) as Row[], rates: (rates.data ?? []) as Row[] };
     },
   });
 
@@ -59,30 +60,48 @@ export function StaffProfileView({ staffId, driver, self }: { staffId: string; d
   for (const ses of d.sessions) {
     const a = ses.academic_sessions;
     const start = ses.joining_date && ses.joining_date > a.start_date ? ses.joining_date : a.start_date;
-    const end = a.end_date < nowMonth ? a.end_date : nowMonth;
+    const sessionEnd = ses.exit_date && ses.exit_date < a.end_date ? ses.exit_date : a.end_date;
+    const end = sessionEnd < nowMonth ? sessionEnd : nowMonth;
     if (start > end) continue;
     for (const month of monthsBetween(start, end)) {
       const over = d.pp.find((p) => p.session_id === ses.session_id && p.month === month);
       const paid = sum(d.pays.filter((p) => p.session_id === ses.session_id && p.payroll_month === month), (p) => p.amount);
-      const due = over ? Number(over.salary_due) : Number(ses.monthly_salary);
-      history.push({ id: ses.session_id + month, session: a.name, session_id: ses.session_id, month, due, paid, balance: due - paid });
+      const eligibility = employmentMonthEligibility({ joiningDate: ses.joining_date, exitDate: ses.exit_date, employmentStatus: ses.status,
+        sessionStart: a.start_date, sessionEnd: a.end_date, monthStart: month });
+      const due = over ? Number(over.salary_due) : Math.round(dailySalary(Number(ses.monthly_salary)) * eligibility.eligibleDays * 100) / 100;
+      history.push({ id: ses.session_id + month, session: a.name, session_id: ses.session_id, month, due, paid, balance: Math.max(0, due - paid), credit: Math.max(0, paid - due), eligibleDays: eligibility.eligibleDays });
     }
   }
   const cur = d.sessions.find((x) => x.session_id === sid);
   const curMonths: Row[] = history.filter((h) => h.session_id === sid).map((h) => ({
     ...payrollRow({
       monthlySalary: Number(cur?.monthly_salary ?? 0), dueOverride: h.due,
-      attendance: d.att.filter((a) => a.date >= h.month && a.date <= monthEnd(h.month)) as { date: string; status: string }[], paid: h.paid,
+       attendance: d.att.filter((a) => a.date >= h.month && a.date <= monthEnd(h.month)) as { date: string; status: string }[], paid: h.paid, eligibleDays: h.eligibleDays,
     }), id: h.id, month: h.month,
   }));
   const tot = { due: sum(curMonths, (r) => r.due), paid: sum(curMonths, (r) => r.paid) };
   const all = { due: sum(history, (r) => r.due), paid: sum(history, (r) => r.paid) };
 
-  const totalKm = sum(d.km, (r) => r.km);
-  const thisMonthKm = sum(d.km.filter((r) => r.date.slice(0, 7) === nowMonth.slice(0, 7)), (r) => r.km);
+  const totalKm = Math.round(sum(d.km, (r) => r.km));
+  const thisMonthKm = Math.round(sum(d.km.filter((r) => r.date.slice(0, 7) === nowMonth.slice(0, 7)), (r) => r.km));
   const fuelPaid = sum(d.fuel.filter((f) => String(f.expense_type).toLowerCase() === "fuel"), (f) => f.amount);
   const kmpl = d.va?.vehicles?.fuel_average_kmpl ?? null;
-  const fuelS = { litres: fuelEstimate(totalKm, kmpl, 0).litres };
+  const kmByMonth = new Map<string, number>();
+  d.km.forEach((r) => kmByMonth.set(r.date.slice(0, 7), (kmByMonth.get(r.date.slice(0, 7)) ?? 0) + Number(r.km)));
+  let estimatedFuelCost = 0;
+  let estimatedLitres = 0;
+  let missingRateMonths = 0;
+  kmByMonth.forEach((km, month) => {
+    const monthRates = d.rates.filter((r) => r.month.slice(0, 7) === month);
+    const rate = monthRates.length === 1 ? monthRates[0] : monthRates.find((r) => r.fuel_type === "Diesel");
+    const est = fuelEstimate(km, kmpl, rate?.rate_per_litre == null ? null : Number(rate.rate_per_litre));
+    if (est.litres != null) estimatedLitres += est.litres;
+    if (est.cost != null) estimatedFuelCost += est.cost; else missingRateMonths++;
+  });
+  estimatedLitres = Math.round(estimatedLitres * 100) / 100;
+  estimatedFuelCost = Math.round(estimatedFuelCost * 100) / 100;
+  const salaryPaid = sum(d.pays.filter((p) => p.session_id === sid), (p) => p.amount);
+  const actualTransport = sum(d.fuel, (f) => f.amount);
   const todayAtt = d.att.find((a) => a.date === today());
 
   const ledger: Row[] = driver ? [
@@ -103,6 +122,7 @@ export function StaffProfileView({ staffId, driver, self }: { staffId: string; d
             <StatCard label="Primary designation" value={cur.designation} />
             <StatCard label="Optional role" value={cur.optional_role || "—"} />
             <StatCard label="Joining date" value={fmtDate(cur.joining_date) || "—"} />
+            <StatCard label="Exit date" value={fmtDate(cur.exit_date) || "—"} />
             <StatCard label="Monthly salary" value={cur.monthly_salary} money />
             <StatCard label="Daily salary (÷30)" value={dailySalary(cur.monthly_salary)} money />
             <StatCard label="Salary due (session)" value={tot.due} money />
@@ -126,8 +146,13 @@ export function StaffProfileView({ staffId, driver, self }: { staffId: string; d
             <StatCard label="Days driven" value={d.km.length} />
             <StatCard label="Avg KM/day" value={d.km.length ? Math.round((totalKm / d.km.length) * 10) / 10 : 0} />
             <StatCard label="Vehicle average" value={kmpl ? `${kmpl} KM/L` : "Not set"} />
-            <StatCard label="Estimated fuel (L)" value={fuelS.litres ?? "—"} />
+             <StatCard label="Estimated fuel (L)" value={kmpl ? estimatedLitres : "Vehicle average not set"} />
+             <StatCard label="Estimated fuel cost" value={missingRateMonths || !kmpl ? "Fuel rate not set" : inr(estimatedFuelCost)} />
             <StatCard label="Actual fuel paid" value={fuelPaid} money />
+             <StatCard label="Fuel Cost Difference" value={missingRateMonths || !kmpl ? "—" : inr(fuelPaid - estimatedFuelCost)} />
+             <StatCard label="Salary paid" value={salaryPaid} money />
+             <StatCard label="Actual operating cost" value={salaryPaid + actualTransport} money />
+             <StatCard label="Analytical cost with estimate" value={missingRateMonths || !kmpl ? "—" : inr(salaryPaid + estimatedFuelCost)} />
           </StatGrid>
         </Section>
       )}
@@ -144,7 +169,7 @@ export function StaffProfileView({ staffId, driver, self }: { staffId: string; d
             <DataTable rows={d.sessions.map((x) => ({ ...x, id: x.id }))} columns={[
               { key: "s", label: "Session", value: (r) => r.academic_sessions?.name }, { key: "category", label: "Category" },
               { key: "designation", label: "Designation" }, { key: "optional_role", label: "Optional Role" }, { key: "monthly_salary", label: "Salary", money: true },
-              { key: "joining_date", label: "Joining", render: (r) => fmtDate(r.joining_date) }, { key: "status", label: "Status" },
+               { key: "joining_date", label: "Joining", render: (r) => fmtDate(r.joining_date) }, { key: "exit_date", label: "Exit", render: (r) => fmtDate(r.exit_date) }, { key: "status", label: "Status" },
             ]} />
           ) : <Empty text="No employment records" />}
         </Section>
