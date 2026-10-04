@@ -71,6 +71,13 @@
       "when": 1791082491161,
       "tag": "0009_fuel_mileage_monthly_rates",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791101389127,
+      "tag": "0010_add_staff_session_exit_dates",
+      "breakpoints": true
     }
   ]
 }

@@ -842,6 +842,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           designation: string
+          exit_date: string | null
           id: string
           joining_date: string | null
           monthly_salary: number
@@ -856,6 +857,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           designation?: string
+          exit_date?: string | null
           id?: string
           joining_date?: string | null
           monthly_salary?: number
@@ -870,6 +872,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           designation?: string
+          exit_date?: string | null
           id?: string
           joining_date?: string | null
           monthly_salary?: number
