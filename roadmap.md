@@ -1,8 +1,9 @@
 # Roadmap
 
-- [x] Inspect current Transport, Payroll, employment, import, and driver-profile flows.
-- [x] Create a fresh database backup and dry-run impact report.
-- [x] Add session-specific employment exit date with validation and safe payroll eligibility.
-- [x] Correct fuel/KM derived calculations and summaries without changing actual financial records.
-- [x] Update employment/import/profile screens for exit date and review warnings.
-- [x] Verify database integrity, exact calculations, session isolation, and preview behavior.
+- [x] Create and verify a fresh public ERP database backup.
+- [x] Capture dry-run monthly KM and fuel-deletion scope.
+- [ ] Add monthly KM storage and migrate verified daily totals.
+- [ ] Verify monthly totals, then remove legacy daily KM and confirmed fuel expenses/ledger links.
+- [ ] Replace transport UI, fuel math, and driver summaries.
+- [ ] Fix More drawer and bottom navigation conflict.
+- [ ] Verify protected data counts, duplicates, tests, typecheck, build, and mobile behavior.
