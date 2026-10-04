@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -34,7 +34,7 @@ export const NAV: { group: string; items: NavItem[] }[] = [
     { to: "/drivers", label: "Drivers", icon: Truck, roles: A },
     { to: "/m/vehicles", label: "Vehicles", icon: Bus, roles: A },
     { to: "/m/vehicle_assignments", label: "Assignments", icon: ClipboardList, roles: A },
-    { to: "/m/driver_km_logs", label: "Driver KM", icon: Gauge, roles: A },
+    { to: "/m/monthly_vehicle_km", label: "Monthly KM", icon: Gauge, roles: A },
     { to: "/fuel", label: "Fuel & Transport", icon: Fuel, roles: A },
   ] },
   { group: "Finance", items: [
@@ -69,6 +69,13 @@ export function AppShell({ children }: { children: ReactNode }) {
   const qc = useQueryClient();
   const allowed = (i: NavItem) => i.roles.some((r) => roles.includes(r));
   const groups = NAV.map((g) => ({ ...g, items: g.items.filter(allowed) })).filter((g) => g.items.length);
+
+  useEffect(() => {
+    if (!open) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = previous; };
+  }, [open]);
 
   const signOut = async () => {
     await qc.cancelQueries(); qc.clear();
@@ -106,9 +113,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         {nav}
       </aside>
       {open && (
-        <div className="no-print fixed inset-0 z-50 lg:hidden">
+        <div className="no-print fixed inset-0 z-[10000] h-dvh lg:hidden">
           <div className="absolute inset-0 bg-foreground/40" onClick={() => setOpen(false)} />
-          <aside className="absolute inset-y-0 left-0 w-72 overflow-y-auto bg-sidebar">
+          <aside className="absolute inset-y-0 left-0 h-dvh w-72 overflow-y-auto overscroll-contain bg-sidebar pb-[env(safe-area-inset-bottom)]">
             <div className="flex items-center justify-between pr-2"><Brand /><button aria-label="Close menu" onClick={() => setOpen(false)} className="text-sidebar-foreground"><X /></button></div>
             {nav}
           </aside>
@@ -124,10 +131,10 @@ export function AppShell({ children }: { children: ReactNode }) {
             <button aria-label="Sign out" title="Sign out" onClick={signOut} className="rounded-md p-2 hover:bg-accent"><LogOut className="h-4 w-4" /></button>
           </div>
         </header>
-        <main className="mx-auto min-w-0 w-full max-w-7xl p-3 pb-[calc(var(--mobile-bottom-nav-height)+env(safe-area-inset-bottom)+24px)] sm:p-5 md:pb-8">{children}</main>
+        <main className={`mx-auto min-w-0 w-full max-w-7xl p-3 sm:p-5 md:pb-8 ${open ? "pb-3" : "pb-[calc(var(--mobile-bottom-nav-height)+env(safe-area-inset-bottom)+24px)]"}`}>{children}</main>
       </div>
       {/* Single mobile bottom nav: fixed to the viewport (outside all scroll/transform containers), above page content, below dialogs (z-50+). */}
-      <nav aria-label="Main" className="no-print fixed inset-x-0 bottom-0 z-[9999] w-full max-w-full rounded-t-[18px] bg-nav px-2 pb-[env(safe-area-inset-bottom)] shadow-[0_-6px_20px_rgb(0_0_0/0.18)] md:hidden">
+      {!open && <nav aria-label="Main" className="no-print fixed inset-x-0 bottom-0 z-[9999] w-full max-w-full rounded-t-[18px] bg-nav px-2 pb-[env(safe-area-inset-bottom)] shadow-[0_-6px_20px_rgb(0_0_0/0.18)] md:hidden">
         <div className="grid h-[var(--mobile-bottom-nav-height)] grid-flow-col auto-cols-fr">
           {quick.map((i) => {
             const active = loc.pathname === i.to || loc.pathname.startsWith(i.to + "/");
@@ -143,7 +150,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <span className="text-[11.5px] leading-none text-nav-muted">More</span>
           </button>
         </div>
-      </nav>
+      </nav>}
     </div>
   );
 }

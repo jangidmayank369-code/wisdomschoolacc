@@ -434,26 +434,27 @@ export const MODULES: ModuleDef[] = [
     ],
   },
   {
-    key: "driver_km_logs", title: "Driver KM", table: "driver_km_logs", select: "*, staff(employee_id, name), vehicles(vehicle_no)",
-    sessionScoped: true, orderBy: "date", dateField: "date", writeRoles: ["admin"], rowLink: (r) => `/drivers/${r.staff_id}`,
+    key: "monthly_vehicle_km", title: "Monthly KM", table: "monthly_vehicle_km", select: "*, staff(employee_id, name), vehicles(vehicle_no)",
+    sessionScoped: true, orderBy: "month", dateField: "month", writeRoles: ["admin"], addLabel: "Add Monthly KM", rowLink: (r) => `/drivers/${r.staff_id}`,
     columns: [
-      { key: "date", label: "Date", render: (r) => fmtDate(r.date) }, { key: "staff", label: "Driver", value: st },
-      { key: "vehicle", label: "Vehicle", value: (r) => r.vehicles?.vehicle_no }, { key: "km", label: "KM" },
-      { key: "kind", label: "Type", value: (r) => (r.is_override ? "Corrected" : r.is_auto ? "Auto" : "Manual") },
-      { key: "change_reason", label: "Correction" },
+      { key: "month", label: "Month", render: (r) => fmtMonth(r.month) },
+      { key: "vehicle", label: "Vehicle", value: (r) => r.vehicles?.vehicle_no }, { key: "staff", label: "Driver", value: st },
+      { key: "total_km", label: "Total KM", value: (r) => `${Math.round(Number(r.total_km))} KM` },
+      { key: "change_reason", label: "Edit reason" },
     ],
     fields: [
-      { name: "staff_id", label: "Driver", type: "ref", ref: "driver", required: true },
+      { name: "month", label: "Month", type: "month", required: true },
       { name: "vehicle_id", label: "Vehicle", type: "ref", ref: "vehicle", required: true },
-      { name: "date", label: "Date", type: "date", required: true },
-      { name: "km", label: "KM", type: "number", required: true },
+      { name: "staff_id", label: "Driver", type: "ref", ref: "driver", required: true },
+      { name: "total_km", label: "Total KM", type: "number", required: true },
       { name: "remarks", label: "Remarks", type: "text" },
+      { name: "change_reason", label: "Reason for editing a saved total", type: "text" },
     ],
     importCols: [
-      { header: "driver_employee_id", field: "staff_id", type: "staff", required: true, example: "105" },
       { header: "vehicle_no", field: "vehicle_id", type: "vehicle", required: true, example: "HR-01-AB-1234" }, sessCol,
-      { header: "date", field: "date", type: "date", required: true, example: "01-04-2025" },
-      { header: "km", field: "km", type: "number", required: true, example: "45" }, { header: "remarks", field: "remarks", example: "" },
+      { header: "driver_employee_id", field: "staff_id", type: "staff", required: true, example: "105" },
+      { header: "month", field: "month", type: "month", required: true, example: "04-2025" },
+      { header: "total_km", field: "total_km", type: "number", required: true, example: "1085" }, { header: "remarks", field: "remarks", example: "" },
     ],
   },
   {
@@ -524,25 +525,6 @@ export const MODULES: ModuleDef[] = [
     columns: txnCols, fields: txnFields(), importCols: txnImport(true),
   },
 ];
-
-MODULES.push({
-  key: "km_defaults", title: "Vehicle Daily KM Settings", table: "vehicle_km_defaults", select: "*, vehicles(vehicle_no)",
-  sessionScoped: true, orderBy: "effective_from", writeRoles: ["admin"], addLabel: "Add Daily KM Setting",
-  columns: [
-    { key: "vehicle", label: "Vehicle", value: (r) => r.vehicles?.vehicle_no }, { key: "daily_km", label: "KM / day" },
-    { key: "effective_from", label: "From", render: (r) => fmtDate(r.effective_from) },
-    { key: "effective_to", label: "To", render: (r) => (r.effective_to ? fmtDate(r.effective_to) : "Ongoing") },
-    { key: "start_odometer", label: "Start odometer" }, { key: "remarks", label: "Remarks" },
-  ],
-  fields: [
-    { name: "vehicle_id", label: "Vehicle", type: "ref", ref: "vehicle", required: true },
-    { name: "daily_km", label: "Default daily KM", type: "number", required: true },
-    { name: "effective_from", label: "Effective from", type: "date", required: true },
-    { name: "effective_to", label: "Effective to (optional)", type: "date" },
-    { name: "start_odometer", label: "Starting odometer (optional)", type: "number" },
-    { name: "remarks", label: "Remarks", type: "text" },
-  ],
-});
 
 MODULES.push({
   key: "fuel_rates", title: "Fuel Rates", table: "fuel_rates", select: "*",

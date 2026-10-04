@@ -71,12 +71,14 @@ export function payrollRow(opts: {
 
 export const sum = <T,>(rows: T[], f: (r: T) => unknown) => rows.reduce((s, r) => s + num(f(r)), 0);
 
-/** Fuel estimate: litres = KM ÷ vehicle average (KM/L); cost = litres × that month's rate. Estimate only — Accounts use actual expenses. */
+/** Whole-number fuel estimate. Decimals are deliberately discarded at each calculation step. */
 export const fuelEstimate = (km: number, kmpl: number | null | undefined, ratePerLitre: number | null | undefined) => {
   const roundedKm = Math.round(num(km));
-  const litres = num(kmpl) > 0 ? Math.round((roundedKm / num(kmpl)) * 100) / 100 : null;
-  const cost = litres != null && ratePerLitre != null && num(ratePerLitre) >= 0 ? Math.round(litres * num(ratePerLitre) * 100) / 100 : null;
-  return { km: roundedKm, litres, cost };
+  const average = Math.floor(num(kmpl));
+  const rate = ratePerLitre == null ? null : Math.floor(num(ratePerLitre));
+  const litres = average > 0 ? Math.floor(roundedKm / average) : null;
+  const cost = litres != null && rate != null && rate >= 0 ? litres * rate : null;
+  return { km: roundedKm, average: average > 0 ? average : null, litres, rate, cost };
 };
 
 const later = (...dates: string[]) => dates.reduce((a, b) => a > b ? a : b);

@@ -48,7 +48,6 @@ export function ResourcePage({ moduleKey, where, embedded, title, allSessions }:
     queryKey: qk,
     enabled: !(m.sessionScoped || m.sessionJoin) || allSessions || !!sid,
     queryFn: async () => {
-      if (m.table === "driver_km_logs" && isAdmin) await db.rpc("generate_km_logs", {});
       const join = m.sessionJoin && !allSessions && !where ? m.sessionJoin : null;
       if (join && !sid) return [];
       let query = db.from(m.table).select(join ? `${m.select}, ${join.table}!inner(${join.select})` : m.select);
@@ -95,6 +94,10 @@ export function ResourcePage({ moduleKey, where, embedded, title, allSessions }:
     const virtual: Row = {};
     const data: Row = {};
     for (const f of formFields) (f.virtual ? virtual : data)[f.name] = vals[f.name];
+    if (m.key === "monthly_vehicle_km") {
+      data.total_km = Math.round(Number(data.total_km));
+      if (!Number.isFinite(data.total_km) || data.total_km < 0) throw new Error("Total KM must be a non-negative whole number");
+    }
     if (m.key === "staff_sessions") {
       if (data.status === "active" && data.exit_date) throw new Error("Active employment cannot have an exit date");
       if (data.status === "left" && !data.exit_date) throw new Error("Exit date is required when status is Left");
@@ -113,6 +116,9 @@ export function ResourcePage({ moduleKey, where, embedded, title, allSessions }:
       if (m.key === "leave_requests" && !isAdmin) ins.staff_id = staffId;
       if (m.tokenized) ins.client_token = crypto.randomUUID();
       const { data: rec, error } = await db.from(m.table).insert(ins).select("id").single();
+      if (error?.code === "23505" && m.key === "monthly_vehicle_km") {
+        throw new Error("Monthly KM already exists for this vehicle and month. Open that record and edit it instead.");
+      }
       if (error) throw error;
       if (m.afterSave) await m.afterSave({ sessionId: sid, record: rec as Row, values: virtual });
       toast.success("Saved");
@@ -179,8 +185,6 @@ export function ResourcePage({ moduleKey, where, embedded, title, allSessions }:
         out.push(<button key="j" className="text-sm text-destructive underline" onClick={() => setLeave(r, "rejected")}>Reject</button>);
       }
       if (isAdmin) out.push(<button key="del" className="text-sm text-destructive underline" onClick={() => remove(r)}>Delete</button>);
-    } else if (m.key === "driver_km_logs") {
-      if (isAdmin) out.push(<button key="k" className="text-sm text-primary underline" onClick={() => setCorr({ row: r, kind: "km" })}>Edit day</button>);
     } else if (m.noEdit) {
       if (isAdmin) out.push(<button key="c" className="text-sm text-primary underline" onClick={() => setCorr({ row: r, kind: "status" })}>Correct</button>);
     } else if (canWrite && isAdmin) {
