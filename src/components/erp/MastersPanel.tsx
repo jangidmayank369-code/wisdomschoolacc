@@ -7,11 +7,10 @@ import { db } from "@/lib/app-context";
 import { errMsg } from "@/lib/format";
 import type { MasterKind, Row } from "@/lib/modules";
 import { MASTER_LABEL } from "./FormDialog";
-import { ResourcePage } from "./ResourcePage";
 import { Loading } from "./States";
 
-type Tab = "fee" | MasterKind | "km";
-const TABS: [Tab, string][] = [["fee", "Fee Categories"], ["maintenance_category", "Maintenance Categories"], ["staff_category", "Staff Categories"], ["designation", "Designations"], ["km", "Vehicle Daily KM Settings"]];
+type Tab = "fee" | MasterKind;
+const TABS: [Tab, string][] = [["fee", "Fee Categories"], ["maintenance_category", "Maintenance Categories"], ["staff_category", "Staff Categories"], ["designation", "Designations"]];
 
 /** Admin-only master lists. No delete: deactivate instead; records keep their stored names. */
 export function MastersPanel() {
@@ -21,12 +20,12 @@ export function MastersPanel() {
       <div className="flex flex-wrap gap-2">
         {TABS.map(([k, l]) => <Button key={k} size="sm" variant={tab === k ? "default" : "outline"} onClick={() => setTab(k)}>{l}</Button>)}
       </div>
-      {tab === "km" ? <ResourcePage moduleKey="km_defaults" embedded title="Vehicle Daily KM Settings" /> : <MasterList key={tab} tab={tab} />}
+      <MasterList key={tab} tab={tab} />
     </div>
   );
 }
 
-function MasterList({ tab }: { tab: Exclude<Tab, "km"> }) {
+function MasterList({ tab }: { tab: Tab }) {
   const qc = useQueryClient();
   const label = tab === "fee" ? "Fee Category" : MASTER_LABEL[tab];
   const [q, setQ] = useState("");

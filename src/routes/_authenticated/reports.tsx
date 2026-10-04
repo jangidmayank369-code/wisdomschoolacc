@@ -20,7 +20,7 @@ const LINKS: [string, string][] = [
   ["Students", "/m/students"], ["Class lists", "/m/student_sessions"], ["Fee charges", "/m/student_charges"], ["Fee collection", "/m/fee_payments"],
   ["Staff", "/m/staff"], ["Employment & salary", "/m/staff_sessions"], ["Salary payments", "/m/staff_payments"], ["Payroll", "/payroll"],
   ["Attendance", "/m/staff_attendance"], ["Leave", "/m/leave_requests"], ["Drivers", "/drivers"], ["Vehicles", "/m/vehicles"],
-  ["KM", "/m/driver_km_logs"], ["Fuel", "/m/transport_expenses"], ["Maintenance", "/m/maintenance_expenses"],
+  ["Monthly KM", "/m/monthly_vehicle_km"], ["Fuel", "/fuel"], ["Maintenance", "/m/maintenance_expenses"],
   ["Income", "/m/income"], ["Expenses", "/m/expenses"], ["Accounts", "/m/accounts"],
 ];
 

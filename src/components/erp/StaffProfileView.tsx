@@ -19,9 +19,11 @@ const histCols: Column[] = [
   { key: "due", label: "Due", money: true }, { key: "paid", label: "Paid", money: true }, { key: "balance", label: "Balance", money: true },
   { key: "credit", label: "Credit / overpayment", money: true },
 ];
-const ledgerCols: Column[] = [
-  { key: "date", label: "Date", render: (r) => fmtDate(r.date) }, { key: "kind", label: "Type" },
-  { key: "detail", label: "Detail" }, { key: "amount", label: "Amount", render: (r) => (r.amount == null ? "" : inr(r.amount)) },
+const driverMonthCols: Column[] = [
+  { key: "month", label: "Month", render: (r) => fmtMonth(r.month) },
+  { key: "salaryDue", label: "Salary Due", money: true }, { key: "salaryPaid", label: "Salary Paid", money: true }, { key: "salaryBalance", label: "Salary Balance", money: true },
+  { key: "fuelEstimated", label: "Fuel Estimated", render: (r) => r.fuelEstimated == null ? "Fuel rate not set" : inr(r.fuelEstimated) },
+  { key: "fuelPaid", label: "Fuel Paid", money: true }, { key: "fuelBalance", label: "Fuel Balance", render: (r) => r.fuelBalance == null ? "—" : inr(r.fuelBalance) },
 ];
 
 /** Staff profile; also used for Driver profile (driver=true) and the staff's own dashboard. */
@@ -39,7 +41,7 @@ export function StaffProfileView({ staffId, driver, self }: { staffId: string; d
         db.from("payroll_periods").select("*").eq("staff_id", staffId),
         sid ? db.from("staff_attendance").select("date, status").eq("staff_id", staffId).eq("session_id", sid) : Promise.resolve({ data: [], error: null }),
         sid ? db.from("vehicle_assignments").select("*, vehicles(vehicle_no, model, fuel_average_kmpl)").eq("staff_id", staffId).eq("session_id", sid).maybeSingle() : Promise.resolve({ data: null, error: null }),
-        driver && sid ? db.from("driver_km_logs").select("date, km, vehicles(vehicle_no)").eq("staff_id", staffId).eq("session_id", sid).order("date") : Promise.resolve({ data: [], error: null }),
+        driver && sid ? db.from("monthly_vehicle_km").select("month, total_km, vehicles(vehicle_no, fuel_average_kmpl)").eq("staff_id", staffId).eq("session_id", sid).order("month") : Promise.resolve({ data: [], error: null }),
         driver && sid ? db.from("transport_expenses").select("date, amount, expense_type, mode, paid_by").eq("staff_id", staffId).eq("session_id", sid).eq("is_reversed", false) : Promise.resolve({ data: [], error: null }),
         driver && sid ? db.from("fuel_rates").select("month, fuel_type, rate_per_litre").eq("session_id", sid).eq("status", "active") : Promise.resolve({ data: [], error: null }),
       ]);
@@ -101,34 +103,37 @@ export function StaffProfileView({ staffId, driver, self }: { staffId: string; d
     return [...periods.map((p) => `Payroll ${fmtMonth(p.month)}`), ...payments.map((p) => `Payment ${fmtMonth(p.payroll_month)}`)];
   });
 
-  const totalKm = Math.round(sum(d.km, (r) => r.km));
-  const thisMonthKm = Math.round(sum(d.km.filter((r) => r.date.slice(0, 7) === nowMonth.slice(0, 7)), (r) => r.km));
   const fuelPaid = sum(d.fuel.filter((f) => String(f.expense_type).toLowerCase() === "fuel"), (f) => f.amount);
-  const kmpl = d.va?.vehicles?.fuel_average_kmpl ?? null;
-  const kmByMonth = new Map<string, number>();
-  d.km.forEach((r) => kmByMonth.set(r.date.slice(0, 7), (kmByMonth.get(r.date.slice(0, 7)) ?? 0) + Number(r.km)));
   let estimatedFuelCost = 0;
-  let estimatedLitres = 0;
   let missingRateMonths = 0;
-  kmByMonth.forEach((km, month) => {
+  const fuelByMonth = new Map<string, Row>();
+  d.km.forEach((kmRow) => {
+    const month = kmRow.month.slice(0, 7);
     const monthRates = d.rates.filter((r) => r.month.slice(0, 7) === month);
-    // A vehicle has no fuel-type field, so multiple rates are ambiguous and must never be guessed.
     const rate = monthRates.length === 1 ? monthRates[0] : undefined;
-    const est = fuelEstimate(km, kmpl, rate?.rate_per_litre == null ? null : Number(rate.rate_per_litre));
-    if (est.litres != null) estimatedLitres += est.litres;
+    const est = fuelEstimate(Number(kmRow.total_km), kmRow.vehicles?.fuel_average_kmpl, rate?.rate_per_litre == null ? null : Number(rate.rate_per_litre));
     if (est.cost != null) estimatedFuelCost += est.cost; else missingRateMonths++;
+    fuelByMonth.set(month, { estimated: est.cost });
   });
-  estimatedLitres = Math.round(estimatedLitres * 100) / 100;
-  estimatedFuelCost = Math.round(estimatedFuelCost * 100) / 100;
-  const salaryPaid = sum(d.pays.filter((p) => p.session_id === sid), (p) => p.amount);
-  const actualTransport = sum(d.fuel, (f) => f.amount);
+  d.fuel.filter((f) => String(f.expense_type).toLowerCase() === "fuel").forEach((f) => {
+    const month = f.date.slice(0, 7);
+    const row = fuelByMonth.get(month) ?? { estimated: 0 };
+    row.paid = Number(row.paid ?? 0) + Number(f.amount);
+    fuelByMonth.set(month, row);
+  });
+  const salaryBalance = Math.max(0, tot.due - tot.paid);
+  const salaryCredit = Math.max(0, tot.paid - tot.due);
+  const fuelBalance = missingRateMonths ? null : Math.max(0, estimatedFuelCost - fuelPaid);
+  const fuelCredit = missingRateMonths ? null : Math.max(0, fuelPaid - estimatedFuelCost);
+  const driverMonths = [...new Set([...curMonths.map((m) => m.month.slice(0, 7)), ...fuelByMonth.keys()])].sort().map((month) => {
+    const salary = curMonths.find((m) => m.month.slice(0, 7) === month);
+    const fuelMonth = fuelByMonth.get(month) ?? {};
+    const fuelEstimated = fuelMonth.estimated == null ? null : Number(fuelMonth.estimated);
+    const monthFuelPaid = Number(fuelMonth.paid ?? 0);
+    return { id: month, month: `${month}-01`, salaryDue: Number(salary?.due ?? 0), salaryPaid: Number(salary?.paid ?? 0), salaryBalance: Math.max(0, Number(salary?.due ?? 0) - Number(salary?.paid ?? 0)),
+      fuelEstimated, fuelPaid: monthFuelPaid, fuelBalance: fuelEstimated == null ? null : Math.max(0, fuelEstimated - monthFuelPaid) };
+  });
   const todayAtt = d.att.find((a) => a.date === today());
-
-  const ledger: Row[] = driver ? [
-    ...d.pays.filter((p) => p.session_id === sid).map((p) => ({ date: p.payment_date, kind: "SALARY PAYMENT", detail: `${fmtMonth(p.payroll_month)} · ${p.mode}${p.paid_by ? " · " + p.paid_by : ""}`, amount: p.amount })),
-    ...d.km.map((k) => ({ date: k.date, kind: "KM", detail: `${k.km} KM · ${k.vehicles?.vehicle_no ?? ""}`, amount: null })),
-    ...d.fuel.map((f) => ({ date: f.date, kind: String(f.expense_type).toUpperCase(), detail: `${f.mode}${f.paid_by ? " · " + f.paid_by : ""}`, amount: f.amount })),
-  ].sort((a, b) => (a.date < b.date ? 1 : -1)).map((r, i) => ({ ...r, id: i }) as Row) : [];
 
   return (
     <div className="space-y-6">
@@ -143,11 +148,11 @@ export function StaffProfileView({ staffId, driver, self }: { staffId: string; d
             <StatCard label="Optional role" value={cur.optional_role || "—"} />
             <StatCard label="Joining date" value={fmtDate(cur.joining_date) || "—"} />
             <StatCard label="Exit date" value={fmtDate(cur.exit_date) || "—"} />
-            <StatCard label="Monthly salary" value={cur.monthly_salary} money />
-            <StatCard label="Daily salary (÷30)" value={dailySalary(cur.monthly_salary)} money />
-            <StatCard label="Salary due (session)" value={tot.due} money />
-            <StatCard label="Salary paid" value={tot.paid} money tone="good" />
-            <StatCard label="Salary balance" value={tot.due - tot.paid} money tone={tot.due - tot.paid > 0 ? "warn" : undefined} />
+            {!driver && <StatCard label="Monthly salary" value={cur.monthly_salary} money />}
+            {!driver && <StatCard label="Daily salary (÷30)" value={dailySalary(cur.monthly_salary)} money />}
+            {!driver && <StatCard label="Salary due (session)" value={tot.due} money />}
+            {!driver && <StatCard label="Salary paid" value={tot.paid} money tone="good" />}
+            {!driver && <StatCard label="Salary balance" value={tot.due - tot.paid} money tone={tot.due - tot.paid > 0 ? "warn" : undefined} />}
             {self && <StatCard label="Today's attendance" value={todayAtt?.status ?? "Not marked"} />}
           </StatGrid>
           {curMonths.some((m) => m.warning) && (
@@ -160,23 +165,15 @@ export function StaffProfileView({ staffId, driver, self }: { staffId: string; d
       )}
 
       {driver && cur && (
-        <Section title="Vehicle, KM & fuel">
+        <Section title={`Driver balance — ${session?.name}`}>
           <StatGrid>
-            <StatCard label="Vehicle" value={d.va?.vehicles?.vehicle_no ?? "Not assigned"} />
-            <StatCard label="Route" value={d.va?.route || "—"} />
-            <StatCard label="KM this month" value={thisMonthKm} />
-            <StatCard label="Total session KM" value={totalKm} />
-            <StatCard label="Days driven" value={d.km.length} />
-            <StatCard label="Avg KM/day" value={d.km.length ? Math.round((totalKm / d.km.length) * 10) / 10 : 0} />
-            <StatCard label="Vehicle average" value={kmpl ? `${kmpl} KM/L` : "Not set"} />
-             <StatCard label="Estimated fuel (L)" value={kmpl ? estimatedLitres : "Vehicle average not set"} />
-             <StatCard label="Estimated fuel cost" value={missingRateMonths || !kmpl ? "Fuel rate not set" : inr(estimatedFuelCost)} />
-            <StatCard label="Actual fuel paid" value={fuelPaid} money />
-             <StatCard label="Fuel Cost Difference" value={missingRateMonths || !kmpl ? "—" : inr(fuelPaid - estimatedFuelCost)} />
-             <StatCard label="Salary paid" value={salaryPaid} money />
-             <StatCard label="Actual operating cost" value={salaryPaid + actualTransport} money />
-             <StatCard label="Analytical cost with estimate" value={missingRateMonths || !kmpl ? "—" : inr(salaryPaid + estimatedFuelCost)} />
+            <StatCard label="Salary Balance" value={salaryBalance} money tone={salaryBalance > 0 ? "warn" : undefined} />
+            <StatCard label="Fuel Balance" value={fuelBalance == null ? "Fuel rate not set" : fuelBalance} money={fuelBalance != null} tone={fuelBalance != null && fuelBalance > 0 ? "warn" : undefined} />
+            <StatCard label="Total Balance" value={fuelBalance == null ? "Fuel rate not set" : salaryBalance + fuelBalance} money={fuelBalance != null} tone={fuelBalance != null && salaryBalance + fuelBalance > 0 ? "warn" : undefined} />
+            {salaryCredit > 0 && <StatCard label="Salary Credit" value={salaryCredit} money tone="good" />}
+            {fuelCredit != null && fuelCredit > 0 && <StatCard label="Fuel Credit" value={fuelCredit} money tone="good" />}
           </StatGrid>
+          {driverMonths.length ? <DataTable columns={driverMonthCols} rows={driverMonths} /> : <Empty text="No data available" />}
         </Section>
       )}
 
@@ -205,13 +202,8 @@ export function StaffProfileView({ staffId, driver, self }: { staffId: string; d
       </Section>
 
       <ResourcePage embedded moduleKey="staff_payments" where={{ staff_id: staffId }} title="Salary payments (selected session)" />
-      {driver && <ResourcePage embedded moduleKey="driver_km_logs" where={{ staff_id: staffId }} title="Daily KM" />}
+      {driver && <ResourcePage embedded moduleKey="monthly_vehicle_km" where={{ staff_id: staffId }} title="Monthly KM" />}
       {driver && <ResourcePage embedded moduleKey="transport_expenses" where={{ staff_id: staffId }} title="Fuel payments" />}
-      {driver && (
-        <Section title="Transport ledger (chronological)">
-          {ledger.length ? <DataTable columns={ledgerCols} rows={ledger} /> : <Empty />}
-        </Section>
-      )}
       <ResourcePage embedded moduleKey="staff_attendance" where={{ staff_id: staffId }} title="Attendance" />
       <ResourcePage embedded moduleKey="leave_requests" where={{ staff_id: staffId }} title="Leave requests" />
     </div>
