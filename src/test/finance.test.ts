@@ -2,9 +2,10 @@ import { describe, expect, it } from "vitest";
 import { employmentMonthEligibility, fuelEstimate, payrollRow } from "@/lib/finance";
 
 describe("fuel estimates", () => {
-  it("uses whole KM and floors mileage, litres, and fuel rate", () => {
-    expect(fuelEstimate(1084.6, 10.8, 91.7)).toEqual({ km: 1085, average: 10, litres: 108, rate: 91, cost: 9828 });
-    expect(fuelEstimate(1099, 10.99, 95.99)).toEqual({ km: 1099, average: 10, litres: 109, rate: 95, cost: 10355 });
+  it("floors mileage and litres but keeps the exact monthly fuel rate", () => {
+    expect(fuelEstimate(1085, 10.8, 91.7)).toEqual({ km: 1085, average: 10, litres: 108, rate: 91.7, cost: 9903.6 });
+    expect(fuelEstimate(1099, 10.99, 95.99)).toEqual({ km: 1099, average: 10, litres: 109, rate: 95.99, cost: 10462.91 });
+    expect(fuelEstimate(80, 8, 94.5)).toEqual({ km: 80, average: 8, litres: 10, rate: 94.5, cost: 945 });
   });
 
   it("does not guess missing mileage or rates", () => {
