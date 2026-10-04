@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle } from "lucide-react";
 import { db, useApp } from "@/lib/app-context";
 import { fmtDate, fmtMonth, inr, monthEnd, monthsBetween, today } from "@/lib/format";
-import { dailySalary, fuelSummary, payrollRow, sum } from "@/lib/finance";
+import { dailySalary, fuelEstimate, payrollRow, sum } from "@/lib/finance";
 import type { Column, Row } from "@/lib/modules";
 import { DataTable } from "./DataTable";
 import { ResourcePage } from "./ResourcePage";
@@ -37,7 +37,7 @@ export function StaffProfileView({ staffId, driver, self }: { staffId: string; d
         db.from("staff_payments").select("*").eq("staff_id", staffId).eq("is_reversed", false),
         db.from("payroll_periods").select("*").eq("staff_id", staffId),
         sid ? db.from("staff_attendance").select("date, status").eq("staff_id", staffId).eq("session_id", sid) : Promise.resolve({ data: [], error: null }),
-        sid ? db.from("vehicle_assignments").select("*, vehicles(vehicle_no, model)").eq("staff_id", staffId).eq("session_id", sid).maybeSingle() : Promise.resolve({ data: null, error: null }),
+        sid ? db.from("vehicle_assignments").select("*, vehicles(vehicle_no, model, fuel_average_kmpl)").eq("staff_id", staffId).eq("session_id", sid).maybeSingle() : Promise.resolve({ data: null, error: null }),
         driver && sid ? db.from("driver_km_logs").select("date, km, vehicles(vehicle_no)").eq("staff_id", staffId).eq("session_id", sid).order("date") : Promise.resolve({ data: [], error: null }),
         driver && sid ? db.from("transport_expenses").select("date, amount, expense_type, mode, paid_by").eq("staff_id", staffId).eq("session_id", sid).eq("is_reversed", false) : Promise.resolve({ data: [], error: null }),
       ]);

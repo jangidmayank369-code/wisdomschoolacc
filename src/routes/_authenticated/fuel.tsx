@@ -63,7 +63,7 @@ function FuelSummary() {
         const v = r.vid ? vmap.get(r.vid) : null;
         const rate = rateFor(r.month);
         const est = fuelEstimate(r.km, v?.fuel_average_kmpl, rate?.rate_per_litre);
-        return { ...r, vehicle: v?.vehicle_no ?? "—", avg: v?.fuel_average_kmpl ?? null, rate: rate ? Number(rate.rate_per_litre) : null, litres: est.litres, cost: est.cost, diff: est.cost != null ? Math.round((r.actual - est.cost) * 100) / 100 : null };
+        return { ...r, km: r.km as number, actual: r.actual as number, vehicle: v?.vehicle_no ?? "—", avg: v?.fuel_average_kmpl ?? null, rate: rate ? Number(rate.rate_per_litre) : null, litres: est.litres, cost: est.cost, diff: est.cost != null ? Math.round((r.actual - est.cost) * 100) / 100 : null };
       });
     },
   });
