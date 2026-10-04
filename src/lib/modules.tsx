@@ -391,12 +391,13 @@ export const MODULES: ModuleDef[] = [
     key: "vehicles", title: "Vehicles", table: "vehicles", select: "*", sessionScoped: false, addLabel: "Add Vehicle (then assign in this session)",
     sessionJoin: { table: "vehicle_assignments", select: "session_id, route, status, staff(name)" }, orderBy: "vehicle_no", searchCols: ["vehicle_no", "model", "registration"],
     writeRoles: ["admin"],
-    columns: [{ key: "vehicle_no", label: "Vehicle No" }, { key: "drv", label: "Driver (session)", value: (r) => r.vehicle_assignments?.[0]?.staff?.name }, { key: "rt", label: "Route", value: (r) => r.vehicle_assignments?.[0]?.route }, { key: "type", label: "Type" }, { key: "model", label: "Model" }, { key: "capacity", label: "Capacity" }, { key: "registration", label: "Registration" }, { key: "status", label: "Status" }],
+    columns: [{ key: "vehicle_no", label: "Vehicle No" }, { key: "registration", label: "Registration" }, { key: "drv", label: "Driver (session)", value: (r) => r.vehicle_assignments?.[0]?.staff?.name }, { key: "rt", label: "Route", value: (r) => r.vehicle_assignments?.[0]?.route }, { key: "avg", label: "Average", value: (r) => (r.fuel_average_kmpl ? `${r.fuel_average_kmpl} KM/L` : "—") }, { key: "type", label: "Type" }, { key: "model", label: "Model" }, { key: "capacity", label: "Capacity" }, { key: "status", label: "Status" }],
     fields: [
       { name: "vehicle_no", label: "Vehicle number", type: "text", required: true },
       { name: "type", label: "Type", type: "select", options: ["Bus", "Van", "Auto", "Car", "Other"] },
       { name: "model", label: "Model", type: "text" },
       { name: "capacity", label: "Capacity", type: "number" },
+      { name: "fuel_average_kmpl", label: "Fuel average (KM/L)", type: "number" },
       { name: "registration", label: "Registration details", type: "text" },
       { name: "status", label: "Status", type: "select", options: ["active", "inactive"], default: "active" },
     ],
@@ -411,14 +412,13 @@ export const MODULES: ModuleDef[] = [
     sessionScoped: true, orderBy: "created_at", writeRoles: ["admin"], rowLink: (r) => `/drivers/${r.staff_id}`,
     columns: [
       { key: "vehicle", label: "Vehicle", value: (r) => r.vehicles?.vehicle_no }, { key: "staff", label: "Driver", value: st },
-      { key: "route", label: "Route" }, { key: "fuel_rate_per_km", label: "Fuel ₹/KM", money: true },
+      { key: "route", label: "Route" },
       { key: "effective_from", label: "From", render: (r) => fmtDate(r.effective_from) }, { key: "status", label: "Status" },
     ],
     fields: [
       { name: "vehicle_id", label: "Vehicle", type: "ref", ref: "vehicle", required: true },
       { name: "staff_id", label: "Driver", type: "ref", ref: "driver", required: true },
       { name: "route", label: "Route", type: "text" },
-      { name: "fuel_rate_per_km", label: "Fuel rate per KM (₹)", type: "number", default: "0" },
       { name: "effective_from", label: "Effective from", type: "date" },
       { name: "status", label: "Status", type: "select", options: ["active", "inactive"], default: "active" },
       { name: "remarks", label: "Remarks", type: "textarea" },
@@ -427,7 +427,7 @@ export const MODULES: ModuleDef[] = [
       { header: "vehicle_no", field: "vehicle_id", type: "vehicle", required: true, example: "HR-01-AB-1234" },
       { header: "driver_employee_id", field: "staff_id", type: "staff", required: true, example: "105" }, sessCol,
       { header: "route", field: "route", example: "Doomra - City" },
-      { header: "fuel_rate_per_km", field: "fuel_rate_per_km", type: "number", example: "8" }, { header: "remarks", field: "remarks", example: "" },
+      { header: "remarks", field: "remarks", example: "" },
     ],
   },
   {
@@ -538,6 +538,25 @@ MODULES.push({
     { name: "effective_to", label: "Effective to (optional)", type: "date" },
     { name: "start_odometer", label: "Starting odometer (optional)", type: "number" },
     { name: "remarks", label: "Remarks", type: "text" },
+  ],
+});
+
+MODULES.push({
+  key: "fuel_rates", title: "Fuel Rates", table: "fuel_rates", select: "*",
+  sessionScoped: true, orderBy: "month", writeRoles: ["admin"], addLabel: "Add Fuel Rate (this session)",
+  columns: [
+    { key: "month", label: "Month", render: (r) => fmtMonth(r.month) }, { key: "fuel_type", label: "Fuel" },
+    { key: "rate_per_litre", label: "Rate / L", money: true },
+    { key: "effective_date", label: "Effective", render: (r) => fmtDate(r.effective_date) },
+    { key: "status", label: "Status" }, { key: "change_reason", label: "Change reason" },
+  ],
+  fields: [
+    { name: "month", label: "Month", type: "month", required: true },
+    { name: "fuel_type", label: "Fuel type", type: "select", options: ["Diesel", "Petrol", "CNG"], required: true, default: "Diesel" },
+    { name: "rate_per_litre", label: "Rate per litre (₹)", type: "number", required: true },
+    { name: "effective_date", label: "Effective date", type: "date" },
+    { name: "status", label: "Status", type: "select", options: ["active", "inactive"], default: "active" },
+    { name: "change_reason", label: "Reason (required when changing a saved rate)", type: "text" },
   ],
 });
 
