@@ -268,6 +268,53 @@ export type Database = {
           },
         ]
       }
+      fuel_rates: {
+        Row: {
+          change_reason: string | null
+          created_at: string
+          created_by: string | null
+          effective_date: string | null
+          fuel_type: string
+          id: string
+          month: string
+          rate_per_litre: number
+          session_id: string
+          status: string
+        }
+        Insert: {
+          change_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          effective_date?: string | null
+          fuel_type?: string
+          id?: string
+          month: string
+          rate_per_litre: number
+          session_id: string
+          status?: string
+        }
+        Update: {
+          change_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          effective_date?: string | null
+          fuel_type?: string
+          id?: string
+          month?: string
+          rate_per_litre?: number
+          session_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fuel_rates_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "academic_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       import_logs: {
         Row: {
           created_at: string
@@ -1314,6 +1361,7 @@ export type Database = {
         Row: {
           capacity: number | null
           created_at: string
+          fuel_average_kmpl: number | null
           id: string
           model: string | null
           registration: string | null
@@ -1324,6 +1372,7 @@ export type Database = {
         Insert: {
           capacity?: number | null
           created_at?: string
+          fuel_average_kmpl?: number | null
           id?: string
           model?: string | null
           registration?: string | null
@@ -1334,6 +1383,7 @@ export type Database = {
         Update: {
           capacity?: number | null
           created_at?: string
+          fuel_average_kmpl?: number | null
           id?: string
           model?: string | null
           registration?: string | null

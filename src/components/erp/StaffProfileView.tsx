@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle } from "lucide-react";
 import { db, useApp } from "@/lib/app-context";
 import { fmtDate, fmtMonth, inr, monthEnd, monthsBetween, today } from "@/lib/format";
-import { dailySalary, fuelSummary, payrollRow, sum } from "@/lib/finance";
+import { dailySalary, fuelEstimate, payrollRow, sum } from "@/lib/finance";
 import type { Column, Row } from "@/lib/modules";
 import { DataTable } from "./DataTable";
 import { ResourcePage } from "./ResourcePage";
@@ -37,7 +37,7 @@ export function StaffProfileView({ staffId, driver, self }: { staffId: string; d
         db.from("staff_payments").select("*").eq("staff_id", staffId).eq("is_reversed", false),
         db.from("payroll_periods").select("*").eq("staff_id", staffId),
         sid ? db.from("staff_attendance").select("date, status").eq("staff_id", staffId).eq("session_id", sid) : Promise.resolve({ data: [], error: null }),
-        sid ? db.from("vehicle_assignments").select("*, vehicles(vehicle_no, model)").eq("staff_id", staffId).eq("session_id", sid).maybeSingle() : Promise.resolve({ data: null, error: null }),
+        sid ? db.from("vehicle_assignments").select("*, vehicles(vehicle_no, model, fuel_average_kmpl)").eq("staff_id", staffId).eq("session_id", sid).maybeSingle() : Promise.resolve({ data: null, error: null }),
         driver && sid ? db.from("driver_km_logs").select("date, km, vehicles(vehicle_no)").eq("staff_id", staffId).eq("session_id", sid).order("date") : Promise.resolve({ data: [], error: null }),
         driver && sid ? db.from("transport_expenses").select("date, amount, expense_type, mode, paid_by").eq("staff_id", staffId).eq("session_id", sid).eq("is_reversed", false) : Promise.resolve({ data: [], error: null }),
       ]);
@@ -81,7 +81,8 @@ export function StaffProfileView({ staffId, driver, self }: { staffId: string; d
   const totalKm = sum(d.km, (r) => r.km);
   const thisMonthKm = sum(d.km.filter((r) => r.date.slice(0, 7) === nowMonth.slice(0, 7)), (r) => r.km);
   const fuelPaid = sum(d.fuel.filter((f) => String(f.expense_type).toLowerCase() === "fuel"), (f) => f.amount);
-  const fuelS = fuelSummary(totalKm, Number(d.va?.fuel_rate_per_km ?? 0), fuelPaid);
+  const kmpl = d.va?.vehicles?.fuel_average_kmpl ?? null;
+  const fuelS = { litres: fuelEstimate(totalKm, kmpl, 0).litres };
   const todayAtt = d.att.find((a) => a.date === today());
 
   const ledger: Row[] = driver ? [
@@ -124,10 +125,9 @@ export function StaffProfileView({ staffId, driver, self }: { staffId: string; d
             <StatCard label="Total session KM" value={totalKm} />
             <StatCard label="Days driven" value={d.km.length} />
             <StatCard label="Avg KM/day" value={d.km.length ? Math.round((totalKm / d.km.length) * 10) / 10 : 0} />
-            <StatCard label="Fuel rate / KM" value={Number(d.va?.fuel_rate_per_km ?? 0)} money />
-            <StatCard label="Estimated fuel" value={fuelS.estimated} money />
-            <StatCard label="Actual fuel paid" value={fuelS.actual} money />
-            <StatCard label="Variance (est − actual)" value={fuelS.variance} money tone={fuelS.variance < 0 ? "bad" : "good"} />
+            <StatCard label="Vehicle average" value={kmpl ? `${kmpl} KM/L` : "Not set"} />
+            <StatCard label="Estimated fuel (L)" value={fuelS.litres ?? "—"} />
+            <StatCard label="Actual fuel paid" value={fuelPaid} money />
           </StatGrid>
         </Section>
       )}

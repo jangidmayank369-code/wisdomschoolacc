@@ -64,6 +64,13 @@
       "when": 1791017330131,
       "tag": "0008_lookup_reads_require_role",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791082491161,
+      "tag": "0009_fuel_mileage_monthly_rates",
+      "breakpoints": true
     }
   ]
 }

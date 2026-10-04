@@ -68,9 +68,11 @@ export function payrollRow(opts: {
 
 export const sum = <T,>(rows: T[], f: (r: T) => unknown) => rows.reduce((s, r) => s + num(f(r)), 0);
 
-export const fuelSummary = (totalKm: number, ratePerKm: number, actualPaid: number) => {
-  const estimated = Math.round(num(totalKm) * num(ratePerKm) * 100) / 100;
-  return { estimated, actual: num(actualPaid), variance: Math.round((estimated - num(actualPaid)) * 100) / 100 };
+/** Fuel estimate: litres = KM ÷ vehicle average (KM/L); cost = litres × that month's rate. Estimate only — Accounts use actual expenses. */
+export const fuelEstimate = (km: number, kmpl: number | null | undefined, ratePerLitre: number | null | undefined) => {
+  const litres = num(kmpl) > 0 ? Math.round((num(km) / num(kmpl)) * 100) / 100 : null;
+  const cost = litres != null && num(ratePerLitre) > 0 ? Math.round(litres * num(ratePerLitre) * 100) / 100 : null;
+  return { litres, cost };
 };
 
 /** Payroll eligibility for a month (YYYY-MM-01): joined on/before month end (joining month included) and not left. */
