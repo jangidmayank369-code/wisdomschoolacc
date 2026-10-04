@@ -88,21 +88,22 @@ function FuelSummary() {
   const rows = q.data ?? [];
   if (!rows.length) return <Empty text="No data available" />;
   const dash = (v: unknown, f: (n: number) => string) => (v == null ? "—" : f(Number(v)));
+  const moneyTwo = (n: number) => `₹${n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   return (
     <div className="space-y-2">
-       <p className="text-sm text-muted-foreground">Estimate uses whole monthly KM, floored KM/L, whole litres, and the floored monthly rate. Accounts use actual fuel expenses only.</p>
+       <p className="text-sm text-muted-foreground">Estimate uses whole monthly KM, floored KM/L, whole litres, and the saved monthly rate. Accounts use actual fuel expenses only.</p>
       <DataTable rows={rows} mobileColumnLimit={11} columns={[
         { key: "month", label: "Month", value: (r) => fmtMonth(r.month + "-01") }, { key: "vehicle", label: "Vehicle" }, { key: "driver", label: "Driver" },
         { key: "km", label: "Total KM", value: (r) => `${r.km.toLocaleString("en-IN")} KM` },
         { key: "avg", label: "Average Used", value: (r) => dash(r.avg, (n) => `${n} KM/L`) },
         { key: "litres", label: "Estimated Litres", value: (r) => dash(r.litres, (n) => `${n} L`) },
-        { key: "rate", label: "Fuel Rate Used", value: (r) => r.rate == null ? "Fuel rate not set" : `${inr(r.rate)}/L` },
-        { key: "cost", label: "Estimated Fuel Cost", value: (r) => dash(r.cost, inr) },
+        { key: "rate", label: "Fuel Rate Used", value: (r) => r.rate == null ? "Fuel rate not set" : `${moneyTwo(r.rate)}/L` },
+        { key: "cost", label: "Estimated Fuel Cost", value: (r) => dash(r.cost, moneyTwo) },
         { key: "actual", label: "Actual Fuel Paid", value: (r) => inr(r.actual) },
-        { key: "balance", label: "Fuel Balance", value: (r) => dash(r.balance, inr) },
-        { key: "credit", label: "Fuel Credit", value: (r) => dash(r.credit, inr) },
+        { key: "balance", label: "Fuel Balance", value: (r) => dash(r.balance, moneyTwo) },
+        { key: "credit", label: "Fuel Credit", value: (r) => dash(r.credit, moneyTwo) },
       ]} />
-       <p className="text-sm">Session totals — KM {Math.round(sum(rows, (r) => r.rawKm)).toLocaleString("en-IN")} · Estimated {inr(sum(rows, (r) => r.cost))} · Paid {inr(sum(rows, (r) => r.actual))} · Balance {inr(sum(rows, (r) => r.balance))} · Credit {inr(sum(rows, (r) => r.credit))}</p>
+       <p className="text-sm">Session totals — KM {Math.round(sum(rows, (r) => r.rawKm)).toLocaleString("en-IN")} · Estimated {moneyTwo(sum(rows, (r) => r.cost))} · Paid {inr(sum(rows, (r) => r.actual))} · Balance {moneyTwo(sum(rows, (r) => r.balance))} · Credit {moneyTwo(sum(rows, (r) => r.credit))}</p>
     </div>
   );
 }

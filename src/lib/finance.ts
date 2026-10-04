@@ -71,13 +71,13 @@ export function payrollRow(opts: {
 
 export const sum = <T,>(rows: T[], f: (r: T) => unknown) => rows.reduce((s, r) => s + num(f(r)), 0);
 
-/** Whole-number fuel estimate. Decimals are deliberately discarded at each calculation step. */
+/** Whole KM, effective average and litres; retain the saved rate and round only the monetary result. */
 export const fuelEstimate = (km: number, kmpl: number | null | undefined, ratePerLitre: number | null | undefined) => {
   const roundedKm = Math.round(num(km));
   const average = Math.floor(num(kmpl));
-  const rate = ratePerLitre == null ? null : Math.floor(num(ratePerLitre));
+  const rate = ratePerLitre == null ? null : num(ratePerLitre);
   const litres = average > 0 ? Math.floor(roundedKm / average) : null;
-  const cost = litres != null && rate != null && rate >= 0 ? litres * rate : null;
+  const cost = litres != null && rate != null && rate >= 0 ? Math.round(litres * rate * 100) / 100 : null;
   return { km: roundedKm, average: average > 0 ? average : null, litres, rate, cost };
 };
 
