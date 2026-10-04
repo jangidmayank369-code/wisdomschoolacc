@@ -81,7 +81,8 @@ export function StaffProfileView({ staffId, driver, self }: { staffId: string; d
   const totalKm = sum(d.km, (r) => r.km);
   const thisMonthKm = sum(d.km.filter((r) => r.date.slice(0, 7) === nowMonth.slice(0, 7)), (r) => r.km);
   const fuelPaid = sum(d.fuel.filter((f) => String(f.expense_type).toLowerCase() === "fuel"), (f) => f.amount);
-  const fuelS = fuelSummary(totalKm, Number(d.va?.fuel_rate_per_km ?? 0), fuelPaid);
+  const kmpl = d.va?.vehicles?.fuel_average_kmpl ?? null;
+  const fuelS = { litres: fuelEstimate(totalKm, kmpl, 0).litres };
   const todayAtt = d.att.find((a) => a.date === today());
 
   const ledger: Row[] = driver ? [
@@ -124,10 +125,9 @@ export function StaffProfileView({ staffId, driver, self }: { staffId: string; d
             <StatCard label="Total session KM" value={totalKm} />
             <StatCard label="Days driven" value={d.km.length} />
             <StatCard label="Avg KM/day" value={d.km.length ? Math.round((totalKm / d.km.length) * 10) / 10 : 0} />
-            <StatCard label="Fuel rate / KM" value={Number(d.va?.fuel_rate_per_km ?? 0)} money />
-            <StatCard label="Estimated fuel" value={fuelS.estimated} money />
-            <StatCard label="Actual fuel paid" value={fuelS.actual} money />
-            <StatCard label="Variance (est − actual)" value={fuelS.variance} money tone={fuelS.variance < 0 ? "bad" : "good"} />
+            <StatCard label="Vehicle average" value={kmpl ? `${kmpl} KM/L` : "Not set"} />
+            <StatCard label="Estimated fuel (L)" value={fuelS.litres ?? "—"} />
+            <StatCard label="Actual fuel paid" value={fuelPaid} money />
           </StatGrid>
         </Section>
       )}

@@ -35,7 +35,7 @@ export const NAV: { group: string; items: NavItem[] }[] = [
     { to: "/m/vehicles", label: "Vehicles", icon: Bus, roles: A },
     { to: "/m/vehicle_assignments", label: "Assignments", icon: ClipboardList, roles: A },
     { to: "/m/driver_km_logs", label: "Driver KM", icon: Gauge, roles: A },
-    { to: "/m/transport_expenses", label: "Fuel & Transport", icon: Fuel, roles: A },
+    { to: "/fuel", label: "Fuel & Transport", icon: Fuel, roles: A },
   ] },
   { group: "Finance", items: [
     { to: "/m/maintenance_expenses", label: "Maintenance", icon: Wrench, roles: A },
