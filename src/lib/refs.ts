@@ -16,11 +16,12 @@ export async function loadRefs(kinds: RefKind[], sessionId: string | null): Prom
         const { data } = await db.from("staff").select("id, employee_id, name").order("employee_id").limit(5000);
         out.staff = (data ?? []).map((r) => ({ id: r.id, code: r.employee_id, label: `${r.employee_id} — ${r.name}` }));
       } else if (k === "driver") {
-        let q = db.from("staff_sessions").select("staff_id, staff(employee_id, name)").or("designation.ilike.driver,optional_role.ilike.driver").eq("status", "active");
+         let q = db.from("staff_sessions").select("staff_id, joining_date, exit_date, staff(employee_id, name)").or("designation.ilike.driver,optional_role.ilike.driver").eq("status", "active");
         q = q.eq("session_id", sessionId ?? "00000000-0000-0000-0000-000000000000");
         const { data } = await q;
         // drivers list; fall back to all staff for code lookup in imports
-        out.driver = (data ?? []).map((r: any) => ({
+         const now = new Date().toISOString().slice(0, 10);
+         out.driver = (data ?? []).filter((r: any) => (!r.joining_date || r.joining_date <= now) && (!r.exit_date || r.exit_date >= now)).map((r: any) => ({
           id: r.staff_id, code: r.staff?.employee_id ?? "", label: `${r.staff?.employee_id} — ${r.staff?.name}`,
         }));
       } else if (k === "vehicle") {

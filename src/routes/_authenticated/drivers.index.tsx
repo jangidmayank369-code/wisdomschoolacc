@@ -23,7 +23,8 @@ function Drivers() {
         db.from("vehicle_assignments").select("staff_id, route, vehicles(vehicle_no)").eq("session_id", session!.id),
       ]);
       if (ss.error) throw ss.error;
-      return (ss.data ?? []).map((r) => ({ ...r, va: (va.data ?? []).find((v) => v.staff_id === r.staff_id) }));
+       const now = new Date().toISOString().slice(0, 10);
+       return (ss.data ?? []).filter((r) => (!r.joining_date || r.joining_date <= now) && (!r.exit_date || r.exit_date >= now)).map((r) => ({ ...r, va: (va.data ?? []).find((v) => v.staff_id === r.staff_id) }));
     },
   });
   return (

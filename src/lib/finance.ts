@@ -28,9 +28,10 @@ export function deductionDays(absent: number, halfDays: number) {
 export type AttendanceOverride = { present: number; absent: number; half_day: number; leave: number; payableDays?: number | null };
 
 /** Salary from counts (used by payroll + historical correction). */
-export function salaryFromCounts(monthly: number, absent: number, halfDays: number, payableDays?: number | null) {
+export function salaryFromCounts(monthly: number, absent: number, halfDays: number, payableDays?: number | null, eligibleDays = DAYS_PER_MONTH) {
   const deduction = deductionDays(absent, halfDays);
-  const paidDays = payableDays != null ? Math.min(DAYS_PER_MONTH, Math.max(0, payableDays)) : Math.max(0, DAYS_PER_MONTH - deduction);
+  const cap = Math.min(DAYS_PER_MONTH, Math.max(0, eligibleDays));
+  const paidDays = payableDays != null ? Math.min(cap, Math.max(0, payableDays)) : Math.max(0, cap - deduction);
   const calculated = Math.max(0, Math.round((num(monthly) / DAYS_PER_MONTH) * paidDays * 100) / 100);
   return { deduction, paidDays, calculated };
 }
@@ -42,17 +43,19 @@ export function payrollRow(opts: {
   attendance: AttendanceRow[];
   override?: AttendanceOverride | null;
   paid: number;
+  eligibleDays?: number;
 }) {
   const a = opts.override ? { present: opts.override.present, absent: opts.override.absent, half_day: opts.override.half_day, leave: opts.override.leave } : attendanceSummary(opts.attendance);
   const monthly = num(opts.monthlySalary);
   const daily = dailySalary(monthly);
-  const { deduction, paidDays, calculated } = salaryFromCounts(monthly, a.absent, a.half_day, opts.override?.payableDays);
+  const eligibleDays = opts.eligibleDays ?? DAYS_PER_MONTH;
+  const { deduction, paidDays, calculated } = salaryFromCounts(monthly, a.absent, a.half_day, opts.override?.payableDays, eligibleDays);
   const due = opts.dueOverride != null ? num(opts.dueOverride) : calculated;
   const paid = num(opts.paid);
   return {
     monthly,
     daily,
-    workingDays: DAYS_PER_MONTH,
+    workingDays: eligibleDays,
     ...a,
     deduction,
     paidDays,
@@ -70,14 +73,39 @@ export const sum = <T,>(rows: T[], f: (r: T) => unknown) => rows.reduce((s, r) =
 
 /** Fuel estimate: litres = KM ÷ vehicle average (KM/L); cost = litres × that month's rate. Estimate only — Accounts use actual expenses. */
 export const fuelEstimate = (km: number, kmpl: number | null | undefined, ratePerLitre: number | null | undefined) => {
-  const litres = num(kmpl) > 0 ? Math.round((num(km) / num(kmpl)) * 100) / 100 : null;
-  const cost = litres != null && num(ratePerLitre) > 0 ? Math.round(litres * num(ratePerLitre) * 100) / 100 : null;
-  return { litres, cost };
+  const roundedKm = Math.round(num(km));
+  const litres = num(kmpl) > 0 ? Math.round((roundedKm / num(kmpl)) * 100) / 100 : null;
+  const cost = litres != null && ratePerLitre != null && num(ratePerLitre) >= 0 ? Math.round(litres * num(ratePerLitre) * 100) / 100 : null;
+  return { km: roundedKm, litres, cost };
 };
 
-/** Payroll eligibility for a month (YYYY-MM-01): joined on/before month end (joining month included) and not left. */
-export function payrollEligible(joiningDate: string | null | undefined, staffStatus: string | null | undefined, monthStart: string) {
-  if (staffStatus && staffStatus !== "active") return false;
-  if (!joiningDate) return true;
-  return joiningDate.slice(0, 7) <= monthStart.slice(0, 7);
+const later = (...dates: string[]) => dates.reduce((a, b) => a > b ? a : b);
+const earlier = (...dates: string[]) => dates.reduce((a, b) => a < b ? a : b);
+const utcDay = (date: string) => Date.parse(`${date}T00:00:00Z`);
+
+/** Inclusive employment overlap in a payroll month, capped by the fixed 30-day salary month. */
+export function employmentMonthEligibility(opts: {
+  joiningDate?: string | null;
+  exitDate?: string | null;
+  employmentStatus?: string | null;
+  sessionStart: string;
+  sessionEnd: string;
+  monthStart: string;
+}) {
+  const monthLast = (() => {
+    const [y, m] = opts.monthStart.slice(0, 7).split("-").map(Number);
+    return `${opts.monthStart.slice(0, 7)}-${String(new Date(Date.UTC(y, m, 0)).getUTCDate()).padStart(2, "0")}`;
+  })();
+  const start = later(opts.joiningDate ?? opts.sessionStart, opts.sessionStart, opts.monthStart);
+  const end = earlier(opts.exitDate ?? opts.sessionEnd, opts.sessionEnd, monthLast);
+  const statusAllowsPayroll = opts.employmentStatus !== "inactive";
+  const rawDays = statusAllowsPayroll && start <= end ? Math.floor((utcDay(end) - utcDay(start)) / 86_400_000) + 1 : 0;
+  const eligibleDays = Math.min(DAYS_PER_MONTH, Math.max(0, rawDays));
+  return { eligible: eligibleDays > 0, eligibleDays, start, end };
+}
+
+export function payrollEligible(joiningDate: string | null | undefined, staffStatus: string | null | undefined, monthStart: string, exitDate?: string | null) {
+  if (staffStatus === "inactive") return false;
+  const monthLast = monthStart.slice(0, 7) + "-31";
+  return (!joiningDate || joiningDate <= monthLast) && (!exitDate || exitDate >= monthStart);
 }

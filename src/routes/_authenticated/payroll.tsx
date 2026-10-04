@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { db, useApp } from "@/lib/app-context";
 import { monthEnd, today, fmtMonth, inr } from "@/lib/format";
-import { payrollRow, salaryFromCounts, dailySalary, sum, payrollEligible } from "@/lib/finance";
+import { payrollRow, salaryFromCounts, dailySalary, sum, employmentMonthEligibility } from "@/lib/finance";
 import { downloadCsv } from "@/lib/csv";
 import { getModule, type Column, type Field, type Row } from "@/lib/modules";
 import { DataTable } from "@/components/erp/DataTable";
@@ -26,6 +26,7 @@ const cols: Column[] = [
   { key: "half_day", label: "Half" }, { key: "leave", label: "Leave" }, { key: "deduction", label: "Deduct days" }, { key: "paidDays", label: "Payable days" },
   { key: "calculated", label: "Calculated", money: true, render: (r) => <>{inr(r.calculated)}{r.corrected ? " ✎" : ""}</> },
   { key: "due", label: "Due", money: true }, { key: "paid", label: "Paid", money: true }, { key: "balance", label: "Balance", money: true },
+  { key: "review", label: "Review", value: (r) => r.review ? "Payroll after exit — Admin review" : "" },
 ];
 
 const payFieldsList: Field[] = [
@@ -49,7 +50,7 @@ function Payroll() {
   const [pay, setPay] = useState<Row | null>(null);
   const [days, setDays] = useState("");
   const [fix, setFix] = useState<Row | null>(null);
-  const gross = pay ? Math.round(dailySalary(pay.monthly) * (Number(days) || 0) * 100) / 100 : 0;
+  const gross = pay ? Math.round(dailySalary(pay.monthly) * Math.min(Number(days) || 0, pay.eligibleDays) * 100) / 100 : 0;
   const payRecord = useMemo(() => pay ? { salary_days: days, amount: Math.max(0, Math.min(gross, pay.due) - pay.paid), paid_by: user?.email ?? "" } : null, [pay, days, gross, user]);
   const m0 = month + "-01";
   const sid = session?.id;
@@ -59,23 +60,30 @@ function Payroll() {
     enabled: !!sid,
     queryFn: async () => {
       const [ss, att, pays, pp] = await Promise.all([
-        db.from("staff_sessions").select("*, staff(employee_id, name, status)").eq("session_id", sid).eq("status", "active"),
+        db.from("staff_sessions").select("*, staff(employee_id, name, status), academic_sessions(start_date, end_date)").eq("session_id", sid),
         db.from("staff_attendance").select("staff_id, date, status").eq("session_id", sid).gte("date", m0).lte("date", monthEnd(m0)),
         db.from("staff_payments").select("staff_id, amount").eq("session_id", sid).eq("payroll_month", m0).eq("is_reversed", false),
         db.from("payroll_periods").select("*").eq("session_id", sid).eq("month", m0),
       ]);
       if (ss.error) throw ss.error;
-      // Eligible: active employment in this session, joined on/before month end (joining month included), staff not left.
-      return (ss.data ?? []).filter((s) => payrollEligible(s.joining_date, s.staff?.status, m0)).map((s) => ({
+      return (ss.data ?? []).map((s) => {
+        const eligibility = employmentMonthEligibility({ joiningDate: s.joining_date, exitDate: s.exit_date, employmentStatus: s.status,
+          sessionStart: s.academic_sessions.start_date, sessionEnd: s.academic_sessions.end_date, monthStart: m0 });
+        const period = (pp.data ?? []).find((p) => p.staff_id === s.staff_id);
+        const staffPays = (pays.data ?? []).filter((p) => p.staff_id === s.staff_id);
+        const historical = !!period || staffPays.length > 0;
+        if (!eligibility.eligible && !historical) return null;
+        return {
         id: s.staff_id, staff_id: s.staff_id, name: `${s.staff?.name} (${s.staff?.employee_id})`, designation: s.designation,
+        eligibleDays: eligibility.eligibleDays, exit_date: s.exit_date, review: !eligibility.eligible && historical,
         ...payrollRow({
           monthlySalary: Number(s.monthly_salary),
-          dueOverride: (pp.data ?? []).find((p) => p.staff_id === s.staff_id)?.salary_due ?? null,
-          override: ((p) => p && p.present_days != null ? { present: Number(p.present_days), absent: Number(p.absent_days ?? 0), half_day: Number(p.half_days ?? 0), leave: Number(p.leave_days ?? 0), payableDays: p.payable_days != null ? Number(p.payable_days) : null } : null)((pp.data ?? []).find((p) => p.staff_id === s.staff_id)),
+          dueOverride: period?.salary_due ?? null,
+          override: period && period.present_days != null ? { present: Number(period.present_days), absent: Number(period.absent_days ?? 0), half_day: Number(period.half_days ?? 0), leave: Number(period.leave_days ?? 0), payableDays: period.payable_days != null ? Number(period.payable_days) : null } : null,
           attendance: (att.data ?? []).filter((a) => a.staff_id === s.staff_id),
-          paid: sum((pays.data ?? []).filter((p) => p.staff_id === s.staff_id), (p) => p.amount),
+          paid: sum(staffPays, (p) => p.amount), eligibleDays: eligibility.eligibleDays,
         }),
-      }));
+      }}).filter((r): r is NonNullable<typeof r> => r != null);
     },
   });
 
@@ -98,10 +106,10 @@ function Payroll() {
             <StatCard label="Balance" value={sum(rows, (r) => r.balance)} money tone="warn" />
             <StatCard label="Absence warnings" value={rows.filter((r) => r.warning).length} tone={rows.some((r) => r.warning) ? "bad" : undefined} />
           </StatGrid>
-          <DataTable columns={cols} rows={rows} rowClass={(r) => (r.warning ? "bg-warning/10" : "")}
+          <DataTable columns={cols} rows={rows} rowClass={(r) => (r.review ? "bg-destructive/10" : r.warning ? "bg-warning/10" : "")}
             onRowClick={(r) => nav({ to: "/staff/$id", params: { id: r.staff_id } })}
             actions={(r) => <span className="flex gap-3">
-              {r.balance > 0 ? <button className="text-sm font-semibold text-primary underline" onClick={() => { setDays(String(r.paidDays)); setPay(r); }}>Pay</button> : <span className="text-xs text-success">Paid</span>}
+              {r.balance > 0 && !r.review ? <button className="text-sm font-semibold text-primary underline" onClick={() => { setDays(String(r.paidDays)); setPay(r); }}>Pay</button> : r.review ? <span className="text-xs font-semibold text-destructive">Review</span> : <span className="text-xs text-success">Paid</span>}
               {isAdmin && <button className="text-sm text-primary underline" onClick={() => setFix(r)}>Correct attendance</button>}
             </span>} />
         </>
@@ -113,7 +121,7 @@ function Payroll() {
             <Input type="number" min={0} max={30} step="0.5" className="mt-1 h-10" value={days} onChange={(e) => setDays(e.target.value)} /></label>
           <dl className="grid grid-cols-2 gap-x-3 gap-y-1 rounded-lg border bg-muted/40 p-3 text-sm">
             {([["Employee", pay.name], ["Designation", pay.designation], ["Month", fmtMonth(m0)], ["Monthly salary", inr(pay.monthly)],
-              ["Daily salary (÷30)", inr(pay.daily)], ["Payable days by rule", `${pay.paidDays} / 30`], ["Present days", pay.present], ["Absent days", pay.absent],
+              ["Daily salary (÷30)", inr(pay.daily)], ["Eligible days", `${pay.eligibleDays} / 30`], ["Payable days by rule", `${pay.paidDays} / ${pay.eligibleDays}`], ["Present days", pay.present], ["Absent days", pay.absent],
               ["Approved leave", pay.leave], ["Half days", pay.half_day], ["Deduction days", pay.deduction], ["Salary days entered", days || "0"],
               ["Gross payable (daily × days)", inr(gross)], ["Previously paid", inr(pay.paid)], ["Remaining after gross", inr(Math.max(0, gross - pay.paid))],
               ["Month salary limit", inr(pay.due)]] as [string, unknown][]).map(([k, v]) => (
@@ -125,8 +133,8 @@ function Payroll() {
         onSubmit={async (v) => {
           if (!(Number(v.amount) > 0)) throw new Error("Amount must be greater than zero");
           if (!confirm(`Pay ${inr(v.amount)} to ${pay!.name} for ${fmtMonth(m0)}?`)) throw new Error("Cancelled — nothing saved");
-          const sd = Number(days) || 0;
-          if (sd <= 0 || sd > 30) throw new Error("Salary days must be between 0.5 and 30");
+           const sd = Number(days) || 0;
+           if (sd <= 0 || sd > pay!.eligibleDays) throw new Error(`Salary days must be between 0.5 and ${pay!.eligibleDays}`);
           const { error } = await db.from("staff_payments").insert({ ...v, salary_days: sd, staff_id: pay!.staff_id, session_id: sid, payroll_month: m0, calculated_amount: gross, client_token: crypto.randomUUID(),
             remarks: [v.remarks, `${sd} days × ${inr(pay!.daily)} = ${inr(gross)}`, Number(v.amount) !== gross - pay!.paid ? `Paid ${inr(v.amount)} (manual)` : null].filter(Boolean).join(" · ") });
           if (error) throw error;
@@ -138,7 +146,7 @@ function Payroll() {
         record={fix && { present_days: fix.present, absent_days: fix.absent, half_days: fix.half_day, leave_days: fix.leave }}
         intro={<p className="text-sm text-muted-foreground">For months where daily attendance is missing or wrong. Salary is recalculated with the 30-day rule (0–1 absent no cut · 2→1 · 3→2 · 4→3 · more than 4 → payable days). Daily attendance records are not changed.</p>}
         onSubmit={async (v) => {
-          const r = salaryFromCounts(fix!.monthly, v.absent_days, v.half_days, v.payable_days);
+           const r = salaryFromCounts(fix!.monthly, v.absent_days, v.half_days, v.payable_days, fix!.eligibleDays);
           if (r.calculated < fix!.paid) throw new Error(`Already paid ${inr(fix!.paid)} is more than the corrected salary ${inr(r.calculated)}. Reverse or correct a payment first.`);
           if (!confirm(`Save correction? Payable days ${r.paidDays}, salary ${inr(r.calculated)}.`)) throw new Error("Cancelled — nothing saved");
           const { error } = await db.from("payroll_periods").upsert({

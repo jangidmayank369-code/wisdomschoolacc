@@ -95,6 +95,12 @@ export function ResourcePage({ moduleKey, where, embedded, title, allSessions }:
     const virtual: Row = {};
     const data: Row = {};
     for (const f of formFields) (f.virtual ? virtual : data)[f.name] = vals[f.name];
+    if (m.key === "staff_sessions") {
+      if (data.status === "active" && data.exit_date) throw new Error("Active employment cannot have an exit date");
+      if (data.status === "left" && !data.exit_date) throw new Error("Exit date is required when status is Left");
+      if (data.joining_date && data.exit_date && data.exit_date < data.joining_date) throw new Error("Exit date cannot be before joining date");
+      if (data.status === "left" && !confirm("Mark this employment as Left on the selected exit date? Existing payroll and payments will remain unchanged.")) throw new Error("Cancelled — nothing saved");
+    }
     if (editing) {
       const { error } = await db.from(m.table).update(data).eq("id", editing.id);
       if (error) throw error;
