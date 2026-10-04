@@ -66,7 +66,7 @@ function FuelSummary() {
         const v = r.vid ? vmap.get(r.vid) : null;
         const rate = rateFor(r.month);
         const est = fuelEstimate(r.km, v?.fuel_average_kmpl, rate?.rate_per_litre);
-         return { ...r, km: est.km, actual: r.actual as number, vehicle: v?.vehicle_no ?? "—", avg: v?.fuel_average_kmpl ?? null, rate: rate ? Number(rate.rate_per_litre) : null, litres: est.litres, cost: est.cost, diff: est.cost != null ? Math.round((r.actual - est.cost) * 100) / 100 : null };
+         return { ...r, rawKm: r.km as number, km: est.km, actual: r.actual as number, vehicle: v?.vehicle_no ?? "—", avg: v?.fuel_average_kmpl ?? null, rate: rate ? Number(rate.rate_per_litre) : null, litres: est.litres, cost: est.cost, diff: est.cost != null ? Math.round((r.actual - est.cost) * 100) / 100 : null };
       });
     },
   });
@@ -88,7 +88,7 @@ function FuelSummary() {
         { key: "actual", label: "Actual expense", value: (r) => inr(r.actual) },
          { key: "diff", label: "Fuel Cost Difference", value: (r) => dash(r.diff, inr) },
       ]} />
-      <p className="text-sm">Session totals — KM {sum(rows, (r) => r.km).toLocaleString("en-IN")} · Est. cost {inr(sum(rows, (r) => r.cost))} · Actual {inr(sum(rows, (r) => r.actual))}</p>
+       <p className="text-sm">Session totals — KM {Math.round(sum(rows, (r) => r.rawKm)).toLocaleString("en-IN")} · Est. cost {inr(sum(rows, (r) => r.cost))} · Actual {inr(sum(rows, (r) => r.actual))}</p>
     </div>
   );
 }

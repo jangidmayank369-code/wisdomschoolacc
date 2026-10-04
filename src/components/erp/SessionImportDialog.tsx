@@ -68,7 +68,7 @@ export function SessionImportDialog({ kind }: { kind: Kind }) {
   });
   const edit = (id: string, k: string, v: string) => setPicked((p) => ({ ...p, [id]: { ...p[id], [k]: v } }));
   const items = Object.entries(picked);
-  const invalid = items.some(([, v]) => kind === "student" ? !v.class.trim() : !v.designation || !(Number(v.monthly_salary) >= 0) || v.monthly_salary === "");
+  const invalid = items.some(([, v]) => kind === "student" ? !v.class.trim() : !v.designation || !(Number(v.monthly_salary) >= 0) || v.monthly_salary === "" || (common.status === "left" && !v.exit_date));
 
   const reset = () => { setPicked({}); setStep("pick"); setSearch(""); };
   const confirm = async () => {

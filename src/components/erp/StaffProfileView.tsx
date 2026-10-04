@@ -81,6 +81,13 @@ export function StaffProfileView({ staffId, driver, self }: { staffId: string; d
   }));
   const tot = { due: sum(curMonths, (r) => r.due), paid: sum(curMonths, (r) => r.paid) };
   const all = { due: sum(history, (r) => r.due), paid: sum(history, (r) => r.paid) };
+  const postExitReview = d.sessions.flatMap((employment) => {
+    if (!employment.exit_date) return [];
+    const exitMonth = employment.exit_date.slice(0, 7);
+    const periods = d.pp.filter((p) => p.session_id === employment.session_id && p.month.slice(0, 7) > exitMonth);
+    const payments = d.pays.filter((p) => p.session_id === employment.session_id && p.payroll_month.slice(0, 7) > exitMonth);
+    return [...periods.map((p) => `Payroll ${fmtMonth(p.month)}`), ...payments.map((p) => `Payment ${fmtMonth(p.payroll_month)}`)];
+  });
 
   const totalKm = Math.round(sum(d.km, (r) => r.km));
   const thisMonthKm = Math.round(sum(d.km.filter((r) => r.date.slice(0, 7) === nowMonth.slice(0, 7)), (r) => r.km));
@@ -133,6 +140,9 @@ export function StaffProfileView({ staffId, driver, self }: { staffId: string; d
           {curMonths.some((m) => m.warning) && (
             <p className="flex items-center gap-2 rounded-md bg-warning/15 p-2 text-sm"><AlertTriangle className="h-4 w-4" />Absent more than 4 days in some months. Pay only for actual payable days in those months — review before paying.</p>
           )}
+           {postExitReview.length > 0 && (
+             <p className="flex items-center gap-2 rounded-md bg-destructive/10 p-2 text-sm text-destructive"><AlertTriangle className="h-4 w-4" />{postExitReview.length} historical payroll item(s) after an exit date require Admin review. Nothing was changed.</p>
+           )}
         </>
       )}
 
