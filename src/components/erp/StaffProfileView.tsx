@@ -30,7 +30,7 @@ export function StaffProfileView({ staffId, driver, self }: { staffId: string; d
   const sid = session?.id;
 
   const q = useQuery({
-    queryKey: ["profile", "staff", staffId, sid],
+    queryKey: ["profile", "staff", staffId, sid, "transport-v2"],
     queryFn: async () => {
       const [st, ss, pays, pp, att, va, km, fuel, rates] = await Promise.all([
         db.from("staff").select("*").eq("id", staffId).single(),
@@ -43,7 +43,7 @@ export function StaffProfileView({ staffId, driver, self }: { staffId: string; d
         driver && sid ? db.from("transport_expenses").select("date, amount, expense_type, mode, paid_by").eq("staff_id", staffId).eq("session_id", sid).eq("is_reversed", false) : Promise.resolve({ data: [], error: null }),
         driver && sid ? db.from("fuel_rates").select("month, fuel_type, rate_per_litre").eq("session_id", sid).eq("status", "active") : Promise.resolve({ data: [], error: null }),
       ]);
-      const err = st.error ?? ss.error ?? pays.error ?? pp.error ?? att.error;
+      const err = st.error ?? ss.error ?? pays.error ?? pp.error ?? att.error ?? va.error ?? km.error ?? fuel.error ?? rates.error;
       if (err) throw err;
       return { staff: st.data as Row, sessions: (ss.data ?? []) as Row[], pays: (pays.data ?? []) as Row[], pp: (pp.data ?? []) as Row[],
         att: (att.data ?? []) as Row[], va: va.data as Row | null, km: (km.data ?? []) as Row[], fuel: (fuel.data ?? []) as Row[], rates: (rates.data ?? []) as Row[] };
@@ -52,7 +52,18 @@ export function StaffProfileView({ staffId, driver, self }: { staffId: string; d
 
   if (q.isLoading) return <Loading />;
   if (q.error) return <ErrorState error={q.error} />;
-  const d = q.data!;
+  if (!q.data) return <ErrorState error={new Error("Staff profile data is unavailable")} />;
+  // Keep profiles safe across refreshes and cached data created before transport fields were added.
+  const d = {
+    ...q.data,
+    sessions: q.data.sessions ?? [],
+    pays: q.data.pays ?? [],
+    pp: q.data.pp ?? [],
+    att: q.data.att ?? [],
+    km: q.data.km ?? [],
+    fuel: q.data.fuel ?? [],
+    rates: q.data.rates ?? [],
+  };
   const s = d.staff;
 
   // Complete history across all sessions (each month belongs to exactly one session)
@@ -101,7 +112,8 @@ export function StaffProfileView({ staffId, driver, self }: { staffId: string; d
   let missingRateMonths = 0;
   kmByMonth.forEach((km, month) => {
     const monthRates = d.rates.filter((r) => r.month.slice(0, 7) === month);
-    const rate = monthRates.length === 1 ? monthRates[0] : monthRates.find((r) => r.fuel_type === "Diesel");
+    // A vehicle has no fuel-type field, so multiple rates are ambiguous and must never be guessed.
+    const rate = monthRates.length === 1 ? monthRates[0] : undefined;
     const est = fuelEstimate(km, kmpl, rate?.rate_per_litre == null ? null : Number(rate.rate_per_litre));
     if (est.litres != null) estimatedLitres += est.litres;
     if (est.cost != null) estimatedFuelCost += est.cost; else missingRateMonths++;
