@@ -297,12 +297,14 @@ export const MODULES: ModuleDef[] = [
       { key: "emp", label: "Staff ID", value: (r) => r.staff?.employee_id }, { key: "sname", label: "Staff Name", value: (r) => r.staff?.name },
       { key: "category", label: "Category" }, { key: "designation", label: "Designation" }, { key: "optional_role", label: "Optional Role" },
       { key: "joining_date", label: "Joining", render: (r) => fmtDate(r.joining_date) },
+      { key: "exit_date", label: "Exit", render: (r) => fmtDate(r.exit_date) },
       { key: "monthly_salary", label: "Monthly Salary", money: true },
       { key: "status", label: "Status" },
     ],
     fields: [
       { name: "staff_id", label: "Staff", type: "ref", ref: "staff", required: true, createOnly: true },
       { name: "joining_date", label: "Joining date", type: "date" },
+      { name: "exit_date", label: "Exit date (required when Left)", type: "date" },
       { name: "category", label: "Staff category", type: "select", master: "staff_category" },
       { name: "designation", label: "Primary designation", type: "select", master: "designation", required: true },
       { name: "optional_role", label: "Optional role (e.g. Driver)", type: "select", options: ["Driver", "Accountant", "Teacher", "Peon", "Other"] },
@@ -313,6 +315,7 @@ export const MODULES: ModuleDef[] = [
     importCols: [
       { header: "employee_id", field: "staff_id", type: "staff", required: true, example: "101" }, sessCol,
       { header: "joining_date", field: "joining_date", type: "date", example: "01-04-2025" },
+      { header: "exit_date", field: "exit_date", type: "date", example: "" },
       { header: "designation", field: "designation", required: true, example: "Driver" },
       { header: "optional_role", field: "optional_role", example: "" },
       { header: "monthly_salary", field: "monthly_salary", type: "number", required: true, example: "12000" },

@@ -63,12 +63,12 @@ export function SessionImportDialog({ kind }: { kind: Kind }) {
     if (n[r[pid]]) delete n[r[pid]];
     else n[r[pid]] = kind === "student"
       ? { src: r, class: r.class ?? "", section: r.section ?? "" }
-      : { src: r, designation: r.designation ?? "", optional_role: r.optional_role ?? "", monthly_salary: String(r.monthly_salary ?? ""), joining_date: "" };
+      : { src: r, designation: r.designation ?? "", optional_role: r.optional_role ?? "", monthly_salary: String(r.monthly_salary ?? ""), joining_date: "", exit_date: "" };
     return n;
   });
   const edit = (id: string, k: string, v: string) => setPicked((p) => ({ ...p, [id]: { ...p[id], [k]: v } }));
   const items = Object.entries(picked);
-  const invalid = items.some(([, v]) => kind === "student" ? !v.class.trim() : !v.designation || !(Number(v.monthly_salary) >= 0) || v.monthly_salary === "");
+  const invalid = items.some(([, v]) => kind === "student" ? !v.class.trim() : !v.designation || !(Number(v.monthly_salary) >= 0) || v.monthly_salary === "" || (common.status === "left" && !v.exit_date));
 
   const reset = () => { setPicked({}); setStep("pick"); setSearch(""); };
   const confirm = async () => {
@@ -77,7 +77,7 @@ export function SessionImportDialog({ kind }: { kind: Kind }) {
     for (const [id, v] of items) {
       const row: Row = kind === "student"
         ? { student_id: id, session_id: tgt, class: v.class.trim(), section: v.section.trim() || null, status: common.status, enrollment_date: common.date || null, remarks: `Imported from ${name(src)}` }
-        : { staff_id: id, session_id: tgt, designation: v.designation, optional_role: v.optional_role || null, category: v.src.category ?? null, monthly_salary: Number(v.monthly_salary), joining_date: v.joining_date || common.date || null, status: common.status, remarks: `Imported from ${name(src)}` };
+        : { staff_id: id, session_id: tgt, designation: v.designation, optional_role: v.optional_role || null, category: v.src.category ?? null, monthly_salary: Number(v.monthly_salary), joining_date: v.joining_date || common.date || null, exit_date: common.status === "active" ? null : v.exit_date || null, status: common.status, remarks: `Imported from ${name(src)}` };
       // Reuse (reactivate) an inactive target-session record instead of inserting a duplicate.
       const ex = q.data?.existing.get(id);
       if (ex?.status === "active") { errs.push(`${who(v.src)?.name}: Already active in ${name(tgt)}`); continue; }
@@ -105,11 +105,11 @@ export function SessionImportDialog({ kind }: { kind: Kind }) {
 
           {step === "pick" && (
             <div className="space-y-3">
-              <div className="grid gap-2 sm:grid-cols-4">
+               <div className="grid gap-2 sm:grid-cols-4">
                 <label className="text-xs">1. Source session<select className={sel} value={src} onChange={(e) => { setSrc(e.target.value); setPicked({}); }}><option value="">— Select —</option>{sessions.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
                 <label className="text-xs">2. Target session<select className={sel} value={tgt} onChange={(e) => { setTgt(e.target.value); setPicked({}); }}><option value="">— Select —</option>{sessions.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
                 <label className="text-xs">{kind === "student" ? "Enrollment date" : "Default joining date"}<Input type="date" className="h-9" value={common.date} onChange={(e) => setCommon({ ...common, date: e.target.value })} /></label>
-                <label className="text-xs">Status<select className={sel} value={common.status} onChange={(e) => setCommon({ ...common, status: e.target.value })}><option value="active">active</option><option value="inactive">inactive</option></select></label>
+                 <label className="text-xs">Status<select className={sel} value={common.status} onChange={(e) => setCommon({ ...common, status: e.target.value })}><option value="active">active</option><option value="inactive">inactive</option><option value="left">left</option></select></label>
               </div>
               {src && tgt && src === tgt && <p className="text-sm text-destructive">Source and target must be different sessions.</p>}
               {src && tgt && src !== tgt && (
@@ -146,6 +146,7 @@ export function SessionImportDialog({ kind }: { kind: Kind }) {
                                 </select>
                                 <Input className="h-9" type="number" min="0" placeholder="Salary ₹ *" value={p.monthly_salary} onChange={(e) => edit(r[pid], "monthly_salary", e.target.value)} />
                                 <Input className="h-9" type="date" title="Joining date (blank = default)" value={p.joining_date} onChange={(e) => edit(r[pid], "joining_date", e.target.value)} />
+                                 {common.status === "left" && <Input className="h-9" type="date" title="Exit date" value={p.exit_date} onChange={(e) => edit(r[pid], "exit_date", e.target.value)} />}
                               </>)}
                             </div>
                           )}

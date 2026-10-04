@@ -81,6 +81,11 @@ export async function validateImport(m: ModuleDef, matrix: string[][], selectedS
       else data[c.field] = val;
     }
     if (m.sessionScoped && !sessionId) errors.push("No session selected");
+    if (m.key === "staff_sessions") {
+      if (data.status === "active" && data.exit_date) errors.push("Active employment cannot have an exit date");
+      if (data.status === "left" && !data.exit_date) errors.push("Exit date is required when status is Left");
+      if (data.joining_date && data.exit_date && data.exit_date < data.joining_date) errors.push("Exit date cannot be before joining date");
+    }
     const key = JSON.stringify([sessionId, data]);
     if (!errors.length && seen.has(key)) errors.push("Duplicate row inside file");
     seen.add(key);

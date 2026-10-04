@@ -11,7 +11,11 @@ import { ResourcePage } from "@/components/erp/ResourcePage";
 import { Empty, ErrorState, Loading, PageHeader } from "@/components/erp/States";
 
 export const Route = createFileRoute("/_authenticated/fuel")({
-  head: () => ({ meta: [{ title: "Fuel & Transport — WPS Doomra ERP" }, { name: "description", content: "Daily KM, monthly fuel rates, fuel estimates and actual fuel expenses." }] }),
+  head: () => ({ meta: [
+    { title: "Fuel & Transport — WPS Doomra ERP" }, { name: "description", content: "Daily KM, monthly fuel rates, fuel estimates and actual fuel expenses." },
+    { property: "og:title", content: "Fuel & Transport — WPS Doomra ERP" }, { property: "og:description", content: "Session transport mileage, fuel estimates and actual expenses for Wisdom Public School." },
+    { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" },
+  ] }),
   component: FuelPage,
 });
 
@@ -50,7 +54,10 @@ function FuelSummary() {
       const err = km.error ?? rates.error ?? exp.error ?? veh.error;
       if (err) throw err;
       const vmap = new Map((veh.data as Row[]).map((v) => [v.id, v]));
-      const rateFor = (m: string) => (rates.data as Row[]).find((r) => r.month.slice(0, 7) === m && r.fuel_type === "Diesel") ?? (rates.data as Row[]).find((r) => r.month.slice(0, 7) === m);
+       const rateFor = (m: string) => {
+         const monthRates = (rates.data as Row[]).filter((r) => r.month.slice(0, 7) === m);
+         return monthRates.length === 1 ? monthRates[0] : monthRates.find((r) => r.fuel_type === "Diesel");
+       };
       const keys = new Map<string, Row>();
       const add = (date: string, vid: string | null) => {
         const k = `${date.slice(0, 7)}|${vid ?? ""}`;
@@ -63,7 +70,7 @@ function FuelSummary() {
         const v = r.vid ? vmap.get(r.vid) : null;
         const rate = rateFor(r.month);
         const est = fuelEstimate(r.km, v?.fuel_average_kmpl, rate?.rate_per_litre);
-        return { ...r, km: r.km as number, actual: r.actual as number, vehicle: v?.vehicle_no ?? "—", avg: v?.fuel_average_kmpl ?? null, rate: rate ? Number(rate.rate_per_litre) : null, litres: est.litres, cost: est.cost, diff: est.cost != null ? Math.round((r.actual - est.cost) * 100) / 100 : null };
+         return { ...r, rawKm: r.km as number, km: est.km, actual: r.actual as number, vehicle: v?.vehicle_no ?? "—", avg: v?.fuel_average_kmpl ?? null, rate: rate ? Number(rate.rate_per_litre) : null, litres: est.litres, cost: est.cost, diff: est.cost != null ? Math.round((r.actual - est.cost) * 100) / 100 : null };
       });
     },
   });
@@ -74,18 +81,18 @@ function FuelSummary() {
   const dash = (v: unknown, f: (n: number) => string) => (v == null ? "—" : f(Number(v)));
   return (
     <div className="space-y-2">
-      <p className="text-sm text-muted-foreground">Estimate = KM ÷ vehicle average × that month's fuel rate. Accounts always use the actual fuel expense. Difference = actual − estimate.</p>
+       <p className="text-sm text-muted-foreground">Estimate = rounded monthly KM ÷ vehicle average × that month's fuel rate. Accounts always use the actual fuel expense.</p>
       <DataTable rows={rows} columns={[
         { key: "month", label: "Month", value: (r) => fmtMonth(r.month + "-01") }, { key: "vehicle", label: "Vehicle" },
         { key: "km", label: "Total KM", value: (r) => r.km.toLocaleString("en-IN") },
         { key: "avg", label: "Average", value: (r) => dash(r.avg, (n) => `${n} KM/L`) },
         { key: "litres", label: "Est. litres", value: (r) => dash(r.litres, (n) => `${n.toFixed(2)} L`) },
-        { key: "rate", label: "Rate / L", value: (r) => dash(r.rate, (n) => `${inr(n)}/L`) },
+         { key: "rate", label: "Rate / L", value: (r) => r.rate == null ? "Fuel rate not set" : `${inr(r.rate)}/L` },
         { key: "cost", label: "Est. cost", value: (r) => dash(r.cost, inr) },
         { key: "actual", label: "Actual expense", value: (r) => inr(r.actual) },
-        { key: "diff", label: "Difference", value: (r) => dash(r.diff, inr) },
+         { key: "diff", label: "Fuel Cost Difference", value: (r) => dash(r.diff, inr) },
       ]} />
-      <p className="text-sm">Session totals — KM {sum(rows, (r) => r.km).toLocaleString("en-IN")} · Est. cost {inr(sum(rows, (r) => r.cost))} · Actual {inr(sum(rows, (r) => r.actual))}</p>
+       <p className="text-sm">Session totals — KM {Math.round(sum(rows, (r) => r.rawKm)).toLocaleString("en-IN")} · Est. cost {inr(sum(rows, (r) => r.cost))} · Actual {inr(sum(rows, (r) => r.actual))}</p>
     </div>
   );
 }
