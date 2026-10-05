@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { db, useApp } from "@/lib/app-context";
-import { monthEnd, today, fmtMonth, inr } from "@/lib/format";
+import { monthEnd, today, fmtMonth, inr, salaryInr } from "@/lib/format";
 import { payrollRow, salaryFromCounts, dailySalary, sum, employmentMonthEligibility } from "@/lib/finance";
 import { downloadCsv } from "@/lib/csv";
 import { getModule, type Column, type Field, type Row } from "@/lib/modules";
@@ -24,12 +24,12 @@ export const Route = createFileRoute("/_authenticated/payroll")({
 
 const cols: Column[] = [
   { key: "name", label: "Staff" }, { key: "designation", label: "Designation" },
-  { key: "monthly", label: "Monthly", money: true }, { key: "daily", label: "Daily", money: true },
+  { key: "monthly", label: "Monthly", render: (r) => salaryInr(r.monthly) }, { key: "daily", label: "Daily", render: (r) => salaryInr(r.daily) },
   { key: "workingDays", label: "Working" }, { key: "present", label: "Present" },
   { key: "absent", label: "Absent", render: (r) => <span className={r.warning ? "font-bold text-destructive" : ""}>{r.absent}{r.warning ? " ⚠ >4" : ""}</span> },
   { key: "half_day", label: "Half" }, { key: "leave", label: "Leave" }, { key: "deduction", label: "Deduct days" }, { key: "paidDays", label: "Payable days" },
-  { key: "calculated", label: "Calculated", money: true, render: (r) => <>{inr(r.calculated)}{r.corrected ? " ✎" : ""}</> },
-  { key: "due", label: "Due", money: true }, { key: "paid", label: "Paid", money: true }, { key: "balance", label: "Balance", money: true },
+  { key: "calculated", label: "Calculated", render: (r) => <>{salaryInr(r.calculated)}{r.corrected ? " ✎" : ""}</> },
+  { key: "due", label: "Due", render: (r) => salaryInr(r.due) }, { key: "paid", label: "Paid", render: (r) => salaryInr(r.paid) }, { key: "balance", label: "Balance", render: (r) => salaryInr(r.balance) },
   { key: "review", label: "Review", value: (r) => r.review ? "Payroll after exit — Admin review" : "" },
 ];
 
@@ -107,9 +107,9 @@ function Payroll() {
       {q.isLoading ? <Loading /> : q.error ? <ErrorState error={q.error} /> : !rows.length ? <Empty text="No active staff employment in this session." /> : (
         <>
           <StatGrid>
-            <StatCard label="Total due" value={sum(rows, (r) => r.due)} money />
-            <StatCard label="Total paid" value={sum(rows, (r) => r.paid)} money tone="good" />
-            <StatCard label="Balance" value={sum(rows, (r) => r.balance)} money tone="warn" />
+            <StatCard label="Total due" value={salaryInr(sum(rows, (r) => r.due))} />
+            <StatCard label="Total paid" value={salaryInr(sum(rows, (r) => r.paid))} tone="good" />
+            <StatCard label="Balance" value={salaryInr(sum(rows, (r) => r.balance))} tone="warn" />
             <StatCard label="Absence warnings" value={rows.filter((r) => r.warning).length} tone={rows.some((r) => r.warning) ? "bad" : undefined} />
           </StatGrid>
           <DataTable columns={cols} rows={rows} rowClass={(r) => (r.review ? "bg-destructive/10" : r.warning ? "bg-warning/10" : "")}
@@ -126,11 +126,11 @@ function Payroll() {
           <div className="space-y-2"><label className="block text-xs font-medium">Salary days / days to pay (recalculates amount)
             <Input type="number" min={0} max={30} step="0.5" className="mt-1 h-10" value={days} onChange={(e) => setDays(e.target.value)} /></label>
           <dl className="grid grid-cols-2 gap-x-3 gap-y-1 rounded-lg border bg-muted/40 p-3 text-sm">
-            {([["Employee", pay.name], ["Designation", pay.designation], ["Month", fmtMonth(m0)], ["Monthly salary", inr(pay.monthly)],
-              ["Daily salary (÷30)", inr(pay.daily)], ["Eligible days", `${pay.eligibleDays} / 30`], ["Payable days by rule", `${pay.paidDays} / ${pay.eligibleDays}`], ["Present days", pay.present], ["Absent days", pay.absent],
+            {([["Employee", pay.name], ["Designation", pay.designation], ["Month", fmtMonth(m0)], ["Monthly salary", salaryInr(pay.monthly)],
+              ["Daily salary (÷30)", salaryInr(pay.daily)], ["Eligible days", `${pay.eligibleDays} / 30`], ["Payable days by rule", `${pay.paidDays} / ${pay.eligibleDays}`], ["Present days", pay.present], ["Absent days", pay.absent],
               ["Approved leave", pay.leave], ["Half days", pay.half_day], ["Deduction days", pay.deduction], ["Salary days entered", days || "0"],
-              ["Gross payable (daily × days)", inr(gross)], ["Previously paid", inr(pay.paid)], ["Remaining after gross", inr(Math.max(0, gross - pay.paid))],
-              ["Month salary limit", inr(pay.due)]] as [string, unknown][]).map(([k, v]) => (
+              ["Gross payable (daily × days)", salaryInr(gross)], ["Previously paid", salaryInr(pay.paid)], ["Remaining after gross", salaryInr(Math.max(0, gross - pay.paid))],
+              ["Month salary limit", salaryInr(pay.due)]] as [string, unknown][]).map(([k, v]) => (
               <div key={k} className="contents"><dt className="text-muted-foreground">{k}</dt><dd className="text-right font-medium">{String(v ?? "—")}</dd></div>
             ))}
             <p className="col-span-2 mt-1 text-xs text-muted-foreground">Rule: 0–1 absent no deduction · 2→1 day · 3→2 · 4→3 · more than 4 → only payable days. Amount to pay below can be changed by admin (partial allowed).</p>
@@ -142,10 +142,10 @@ function Payroll() {
            const sd = Number(days) || 0;
            if (sd <= 0 || sd > pay!.eligibleDays) throw new Error(`Salary days must be between 0.5 and ${pay!.eligibleDays}`);
           const { error } = await db.from("staff_payments").insert({ ...v, salary_days: sd, staff_id: pay!.staff_id, session_id: sid, payroll_month: m0, calculated_amount: gross, client_token: crypto.randomUUID(),
-            remarks: [v.remarks, `${sd} days × ${inr(pay!.daily)} = ${inr(gross)}`, Number(v.amount) !== gross - pay!.paid ? `Paid ${inr(v.amount)} (manual)` : null].filter(Boolean).join(" · ") });
+            remarks: [v.remarks, `${sd} days × ${inr(pay!.daily)} = ${salaryInr(gross)}`, Number(v.amount) !== gross - pay!.paid ? `Paid ${inr(v.amount)} (manual)` : null].filter(Boolean).join(" · ") });
           if (error) throw error;
           toast.success("Salary payment recorded");
-          qc.invalidateQueries({ queryKey: ["mod"] }); qc.invalidateQueries({ queryKey: ["dash"] });
+          qc.invalidateQueries({ queryKey: ["mod"] }); qc.invalidateQueries({ queryKey: ["dash"] }); qc.invalidateQueries({ queryKey: ["profile"] });
         }} />
       <FormDialog open={!!fix} onOpenChange={(o) => !o && setFix(null)} title={`Attendance / salary correction — ${fix?.name ?? ""} · ${fmtMonth(m0)}`}
         fields={corrFields} refs={{}} submitLabel="Save correction"
