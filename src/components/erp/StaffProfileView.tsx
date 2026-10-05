@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle } from "lucide-react";
 import { db, useApp } from "@/lib/app-context";
-import { fmtDate, fmtMonth, inr, monthEnd, monthsBetween, today } from "@/lib/format";
+import { fmtDate, fmtMonth, monthEnd, monthsBetween, salaryInr, today } from "@/lib/format";
 import { dailySalary, employmentMonthEligibility, fuelEstimate, payrollRow, sum } from "@/lib/finance";
 import type { Column, Row } from "@/lib/modules";
 import { DataTable } from "./DataTable";
@@ -10,27 +10,22 @@ import { Empty, ErrorState, Loading, PageHeader, Section, StatCard, StatGrid } f
 
 const monthCols: Column[] = [
   { key: "month", label: "Month", render: (r) => fmtMonth(r.month) },
-  { key: "due", label: "Due", money: true }, { key: "paid", label: "Paid", money: true }, { key: "balance", label: "Balance", money: true },
+  { key: "due", label: "Salary Due", render: (r) => salaryInr(r.due) }, { key: "paid", label: "Salary Paid", render: (r) => salaryInr(r.paid) }, { key: "balance", label: "Salary Balance", render: (r) => salaryInr(r.balance) },
   { key: "present", label: "P" }, { key: "absent", label: "A", render: (r) => <span className={r.warning ? "font-bold text-destructive" : ""}>{r.absent}{r.warning ? " ⚠" : ""}</span> },
   { key: "half_day", label: "Half" }, { key: "leave", label: "Leave" }, { key: "paidDays", label: "Paid days" },
 ];
 const histCols: Column[] = [
   { key: "session", label: "Session" }, { key: "month", label: "Month", render: (r) => fmtMonth(r.month) },
-  { key: "due", label: "Due", money: true }, { key: "paid", label: "Paid", money: true }, { key: "balance", label: "Balance", money: true },
-  { key: "credit", label: "Credit / overpayment", money: true },
+  { key: "due", label: "Due", render: (r) => salaryInr(r.due) }, { key: "paid", label: "Paid", render: (r) => salaryInr(r.paid) }, { key: "balance", label: "Balance", render: (r) => salaryInr(r.balance) },
+  { key: "credit", label: "Credit / overpayment", render: (r) => salaryInr(r.credit) },
 ];
 const driverMonthCols: Column[] = [
   { key: "month", label: "Month", render: (r) => fmtMonth(r.month) },
-  { key: "salaryDue", label: "Salary Due", render: (r) => driverMoney(r.salaryDue) }, { key: "salaryPaid", label: "Salary Paid", render: (r) => driverMoney(r.salaryPaid) }, { key: "salaryBalance", label: "Salary Balance", render: (r) => driverMoney(r.salaryBalance) },
-  { key: "fuelEstimated", label: "Fuel Estimated Cost", render: (r) => r.fuelEstimated == null ? "Fuel rate not set" : driverMoney(r.fuelEstimated) },
-  { key: "fuelPaid", label: "Fuel Paid", render: (r) => driverMoney(r.fuelPaid) }, { key: "fuelBalance", label: "Fuel Balance", render: (r) => r.fuelBalance == null ? "—" : driverMoney(r.fuelBalance) },
-  { key: "fuelCredit", label: "Fuel Credit", render: (r) => r.fuelCredit > 0 ? driverMoney(r.fuelCredit) : "—" },
+  { key: "salaryDue", label: "Salary Due", render: (r) => salaryInr(r.salaryDue) }, { key: "salaryPaid", label: "Salary Paid", render: (r) => salaryInr(r.salaryPaid) }, { key: "salaryBalance", label: "Salary Balance", render: (r) => salaryInr(r.salaryBalance) },
+  { key: "fuelEstimated", label: "Fuel Estimated Cost", render: (r) => r.fuelEstimated == null ? "Fuel rate not set" : salaryInr(r.fuelEstimated) },
+  { key: "fuelPaid", label: "Fuel Paid", render: (r) => salaryInr(r.fuelPaid) }, { key: "fuelBalance", label: "Fuel Balance", render: (r) => r.fuelBalance == null ? "—" : salaryInr(r.fuelBalance) },
+  { key: "fuelCredit", label: "Fuel Credit", render: (r) => r.fuelCredit > 0 ? salaryInr(r.fuelCredit) : "—" },
 ];
-
-const driverMoney = (value: number) => {
-  const rounded = Math.round(Number(value) * 100) / 100;
-  return `₹${rounded.toLocaleString("en-IN", { minimumFractionDigits: Number.isInteger(rounded) ? 0 : 2, maximumFractionDigits: 2 })}`;
-};
 
 /** Staff profile; also used for Driver profile (driver=true) and the staff's own dashboard. */
 export function StaffProfileView({ staffId, driver, self }: { staffId: string; driver?: boolean; self?: boolean }) {
@@ -38,7 +33,7 @@ export function StaffProfileView({ staffId, driver, self }: { staffId: string; d
   const sid = session?.id;
 
   const q = useQuery({
-    queryKey: ["profile", "staff", staffId, sid, "transport-v3"],
+    queryKey: ["profile", "staff", staffId, sid, "financial-v4"],
     queryFn: async () => {
       const [st, ss, pays, pp, att, va, km, fuel, rates] = await Promise.all([
         db.from("staff").select("*").eq("id", staffId).single(),
@@ -47,9 +42,9 @@ export function StaffProfileView({ staffId, driver, self }: { staffId: string; d
         db.from("payroll_periods").select("*").eq("staff_id", staffId),
         sid ? db.from("staff_attendance").select("date, status").eq("staff_id", staffId).eq("session_id", sid) : Promise.resolve({ data: [], error: null }),
         sid ? db.from("vehicle_assignments").select("*, vehicles(vehicle_no, model, fuel_average_kmpl)").eq("staff_id", staffId).eq("session_id", sid).maybeSingle() : Promise.resolve({ data: null, error: null }),
-        driver && sid ? db.from("monthly_vehicle_km").select("month, total_km, vehicle_id, vehicles(vehicle_no, fuel_average_kmpl)").eq("staff_id", staffId).eq("session_id", sid).order("month") : Promise.resolve({ data: [], error: null }),
-        driver && sid ? db.from("transport_expenses").select("date, amount, expense_type, staff_id, vehicle_id").eq("session_id", sid).eq("is_reversed", false).ilike("expense_type", "fuel").limit(5000) : Promise.resolve({ data: [], error: null }),
-        driver && sid ? db.from("fuel_rates").select("month, fuel_type, rate_per_litre").eq("session_id", sid).eq("status", "active") : Promise.resolve({ data: [], error: null }),
+        sid ? db.from("monthly_vehicle_km").select("month, total_km, vehicle_id, vehicles(vehicle_no, fuel_average_kmpl)").eq("staff_id", staffId).eq("session_id", sid).order("month") : Promise.resolve({ data: [], error: null }),
+        sid ? db.from("transport_expenses").select("date, amount, expense_type, staff_id, vehicle_id").eq("session_id", sid).eq("is_reversed", false).limit(5000) : Promise.resolve({ data: [], error: null }),
+        sid ? db.from("fuel_rates").select("month, fuel_type, rate_per_litre").eq("session_id", sid).eq("status", "active") : Promise.resolve({ data: [], error: null }),
       ]);
       const err = st.error ?? ss.error ?? pays.error ?? pp.error ?? att.error ?? va.error ?? km.error ?? fuel.error ?? rates.error;
       if (err) throw err;
@@ -88,7 +83,10 @@ export function StaffProfileView({ staffId, driver, self }: { staffId: string; d
       const paid = sum(d.pays.filter((p) => p.session_id === ses.session_id && p.payroll_month === month), (p) => p.amount);
       const eligibility = employmentMonthEligibility({ joiningDate: ses.joining_date, exitDate: ses.exit_date, employmentStatus: ses.status === "inactive" ? "active" : ses.status,
         sessionStart: a.start_date, sessionEnd: a.end_date, monthStart: month });
-      const due = over ? Number(over.salary_due) : Math.round(dailySalary(Number(ses.monthly_salary)) * eligibility.eligibleDays * 100) / 100;
+      const due = over ? Number(over.salary_due) : ses.session_id === sid
+        ? payrollRow({ monthlySalary: Number(ses.monthly_salary), eligibleDays: eligibility.eligibleDays,
+            attendance: d.att.filter((row) => row.date >= month && row.date <= monthEnd(month)) as { date: string; status: string }[], paid: 0 }).calculated
+        : Math.round(dailySalary(Number(ses.monthly_salary)) * eligibility.eligibleDays * 100) / 100;
       history.push({ id: ses.session_id + month, session: a.name, session_id: ses.session_id, month, due, paid, balance: Math.max(0, due - paid), credit: Math.max(0, paid - due), eligibleDays: eligibility.eligibleDays });
     }
   }
@@ -109,9 +107,12 @@ export function StaffProfileView({ staffId, driver, self }: { staffId: string; d
     return [...periods.map((p) => `Payroll ${fmtMonth(p.month)}`), ...payments.map((p) => `Payment ${fmtMonth(p.payroll_month)}`)];
   });
 
+  const isDriver = cur?.designation?.toLowerCase() === "driver" || cur?.optional_role?.toLowerCase() === "driver";
   const vehicleIds = new Set<string>([d.va?.vehicle_id, ...d.km.map((row) => row.vehicle_id)].filter(Boolean));
-  const driverFuel = d.fuel.filter((f) => (f.vehicle_id && vehicleIds.has(f.vehicle_id)) || (!f.vehicle_id && f.staff_id === staffId));
+  const driverFuel = isDriver ? d.fuel.filter((f) => f.expense_type?.toLowerCase() === "fuel" && ((f.vehicle_id && vehicleIds.has(f.vehicle_id)) || (!f.vehicle_id && f.staff_id === staffId))) : [];
   const fuelPaid = sum(driverFuel, (f) => f.amount);
+  // Only explicitly staff-linked non-fuel expenses; free-text ledger parties are not identities.
+  const otherPaid = sum(d.fuel.filter((f) => f.staff_id === staffId && f.expense_type?.toLowerCase() !== "fuel"), (f) => f.amount);
   let estimatedFuelCost = 0;
   let missingRateMonths = 0;
   const fuelByMonth = new Map<string, Row>();
@@ -131,6 +132,7 @@ export function StaffProfileView({ staffId, driver, self }: { staffId: string; d
     fuelByMonth.set(month, row);
   });
   const salaryBalance = Math.max(0, tot.due - tot.paid);
+  const salaryCredit = Math.max(0, tot.paid - tot.due);
   const fuelBalance = missingRateMonths ? null : Math.max(0, estimatedFuelCost - fuelPaid);
   const fuelCredit = missingRateMonths ? null : Math.max(0, fuelPaid - estimatedFuelCost);
   const driverMonths = [...new Set([...curMonths.map((m) => m.month.slice(0, 7)), ...fuelByMonth.keys()])].sort().map((month) => {
@@ -156,11 +158,8 @@ export function StaffProfileView({ staffId, driver, self }: { staffId: string; d
             <StatCard label="Optional role" value={cur.optional_role || "—"} />
             <StatCard label="Joining date" value={fmtDate(cur.joining_date) || "—"} />
             <StatCard label="Exit date" value={fmtDate(cur.exit_date) || "—"} />
-            {!driver && <StatCard label="Monthly salary" value={cur.monthly_salary} money />}
-            {!driver && <StatCard label="Daily salary (÷30)" value={dailySalary(cur.monthly_salary)} money />}
-            {!driver && <StatCard label="Salary due (session)" value={tot.due} money />}
-            {!driver && <StatCard label="Salary paid" value={tot.paid} money tone="good" />}
-            {!driver && <StatCard label="Salary balance" value={tot.due - tot.paid} money tone={tot.due - tot.paid > 0 ? "warn" : undefined} />}
+            <StatCard label="Monthly salary" value={salaryInr(cur.monthly_salary)} />
+            <StatCard label="Daily salary (÷30)" value={salaryInr(dailySalary(cur.monthly_salary))} />
             {self && <StatCard label="Today's attendance" value={todayAtt?.status ?? "Not marked"} />}
           </StatGrid>
           {curMonths.some((m) => m.warning) && (
@@ -172,21 +171,30 @@ export function StaffProfileView({ staffId, driver, self }: { staffId: string; d
         </>
       )}
 
-      {driver && cur && (
-        <Section title={`Driver balance — ${session?.name}`}>
-          <StatGrid>
-            <StatCard label="Total Salary Due" value={driverMoney(tot.due)} />
-            <StatCard label="Salary Paid" value={driverMoney(tot.paid)} tone="good" />
-            <StatCard label="Salary Balance" value={driverMoney(salaryBalance)} tone={salaryBalance > 0 ? "warn" : undefined} />
-            <StatCard label="Total Fuel Cost" value={missingRateMonths ? "Fuel rate not set" : driverMoney(estimatedFuelCost)} />
-            <StatCard label="Fuel Paid" value={driverMoney(fuelPaid)} tone="good" />
-            <StatCard label="Fuel Balance" value={fuelBalance == null ? "Fuel rate not set" : driverMoney(fuelBalance)} tone={fuelBalance != null && fuelBalance > 0 ? "warn" : undefined} />
-            <StatCard label="Total Outstanding" value={fuelBalance == null ? "Fuel rate not set" : driverMoney(salaryBalance + fuelBalance)} tone={fuelBalance != null && salaryBalance + fuelBalance > 0 ? "warn" : undefined} />
-          </StatGrid>
-          {fuelCredit != null && fuelCredit > 0 && <p className="text-sm text-muted-foreground">Fuel Credit: <span className="font-semibold text-success">{driverMoney(fuelCredit)}</span></p>}
-          {driverMonths.length ? <DataTable columns={driverMonthCols} rows={driverMonths} /> : <Empty text="No data available" />}
-        </Section>
-      )}
+      {cur && <Section title="Staff Financial Summary">
+        <div className="space-y-4">
+          <div><h3 className="mb-2 text-sm font-semibold">Salary</h3><StatGrid>
+            <StatCard label="Total Salary Due" value={salaryInr(tot.due)} />
+            <StatCard label="Paid" value={salaryInr(tot.paid)} tone="good" />
+            <StatCard label="Balance" value={salaryInr(salaryBalance)} tone={salaryBalance > 0 ? "warn" : undefined} />
+          </StatGrid>{salaryCredit > 0 && <p className="mt-2 text-sm">Salary Credit / Overpayment: {salaryInr(salaryCredit)}</p>}</div>
+          {isDriver && <div><h3 className="mb-2 text-sm font-semibold">Fuel / Transport</h3><StatGrid>
+            <StatCard label="Total Fuel Cost" value={missingRateMonths ? "Fuel rate not set" : salaryInr(estimatedFuelCost)} />
+            <StatCard label="Paid" value={salaryInr(fuelPaid)} tone="good" />
+            <StatCard label="Balance" value={fuelBalance == null ? "Fuel rate not set" : salaryInr(fuelBalance)} tone={fuelBalance != null && fuelBalance > 0 ? "warn" : undefined} />
+          </StatGrid>{fuelCredit != null && fuelCredit > 0 && <p className="mt-2 text-sm">Fuel Credit: {salaryInr(fuelCredit)}</p>}</div>}
+          <div><h3 className="mb-2 text-sm font-semibold">Other Payments</h3><StatGrid>
+            <StatCard label="Paid (staff-linked)" value={salaryInr(otherPaid)} />
+            <StatCard label="Other Payment Balance" value={salaryInr(0)} />
+          </StatGrid><p className="mt-2 text-xs text-muted-foreground">No separate amount due is recorded for these payments.</p></div>
+          <div className="border-t pt-3"><StatCard label="Total Outstanding" value={isDriver && fuelBalance == null ? "Fuel rate not set" : salaryInr(salaryBalance + (isDriver ? (fuelBalance ?? 0) : 0))} tone="warn" /></div>
+        </div>
+      </Section>}
+
+      {isDriver && cur && <Section title="Vehicle / Transport Details">
+        <p className="text-sm">{d.va?.vehicles?.vehicle_no ?? "No vehicle assigned"} · {d.va?.route ?? "No route"} · Average {d.va?.vehicles?.fuel_average_kmpl ?? "—"} KM/L</p>
+        {driverMonths.length ? <DataTable columns={driverMonthCols} rows={driverMonths} /> : <Empty text="No monthly transport data" />}
+      </Section>}
 
       {cur && (
         <Section title={`Monthly salary — ${session?.name}`}>
@@ -199,7 +207,7 @@ export function StaffProfileView({ staffId, driver, self }: { staffId: string; d
           {d.sessions.length ? (
             <DataTable rows={d.sessions.map((x) => ({ ...x, id: x.id }))} columns={[
               { key: "s", label: "Session", value: (r) => r.academic_sessions?.name }, { key: "category", label: "Category" },
-              { key: "designation", label: "Designation" }, { key: "optional_role", label: "Optional Role" }, { key: "monthly_salary", label: "Salary", money: true },
+               { key: "designation", label: "Designation" }, { key: "optional_role", label: "Optional Role" }, { key: "monthly_salary", label: "Salary", render: (r) => salaryInr(r.monthly_salary) },
                { key: "joining_date", label: "Joining", render: (r) => fmtDate(r.joining_date) }, { key: "exit_date", label: "Exit", render: (r) => fmtDate(r.exit_date) }, { key: "status", label: "Status" },
             ]} />
           ) : <Empty text="No employment records" />}
@@ -208,13 +216,13 @@ export function StaffProfileView({ staffId, driver, self }: { staffId: string; d
         <ResourcePage moduleKey="staff_sessions" where={{ staff_id: staffId }} embedded allSessions title="Employment history (all sessions)" />
       )}
 
-      <Section title={`Complete salary history · Due ${inr(all.due)} · Paid ${inr(all.paid)} · Balance ${inr(all.due - all.paid)}`}>
+       <Section title={`Complete salary history · Due ${salaryInr(all.due)} · Paid ${salaryInr(all.paid)} · Balance ${salaryInr(Math.max(0, all.due - all.paid))}`}>
         {history.length ? <DataTable columns={histCols} rows={[...history].reverse()} pageSize={12} /> : <Empty />}
       </Section>
 
       <ResourcePage embedded moduleKey="staff_payments" where={{ staff_id: staffId }} title="Salary payments (selected session)" />
-      {driver && <ResourcePage embedded moduleKey="monthly_vehicle_km" where={{ staff_id: staffId }} title="Monthly KM" />}
-      {driver && <ResourcePage embedded moduleKey="transport_expenses" where={{ staff_id: staffId }} title="Fuel payments" />}
+       {isDriver && <ResourcePage embedded moduleKey="monthly_vehicle_km" where={{ staff_id: staffId }} title="Monthly KM" />}
+       {isDriver && <ResourcePage embedded moduleKey="transport_expenses" where={{ staff_id: staffId }} title="Fuel payments" />}
       <ResourcePage embedded moduleKey="staff_attendance" where={{ staff_id: staffId }} title="Attendance" />
       <ResourcePage embedded moduleKey="leave_requests" where={{ staff_id: staffId }} title="Leave requests" />
     </div>
