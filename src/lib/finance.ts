@@ -102,7 +102,9 @@ export function employmentMonthEligibility(opts: {
   const end = earlier(opts.exitDate ?? opts.sessionEnd, opts.sessionEnd, monthLast);
   const statusAllowsPayroll = opts.employmentStatus !== "inactive";
   const rawDays = statusAllowsPayroll && start <= end ? Math.floor((utcDay(end) - utcDay(start)) / 86_400_000) + 1 : 0;
-  const eligibleDays = Math.min(DAYS_PER_MONTH, Math.max(0, rawDays));
+  // A full employment month is 30 salary days, even in February.
+  const fullMonth = statusAllowsPayroll && start <= opts.monthStart && end >= monthLast;
+  const eligibleDays = fullMonth ? DAYS_PER_MONTH : Math.min(DAYS_PER_MONTH, Math.max(0, rawDays));
   return { eligible: eligibleDays > 0, eligibleDays, start, end };
 }
 

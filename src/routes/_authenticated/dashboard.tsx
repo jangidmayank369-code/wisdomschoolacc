@@ -5,7 +5,7 @@ import { IndianRupee, Wallet, Clock, TrendingUp, TrendingDown, Scale, Users, Use
 import { db, useApp } from "@/lib/app-context";
 import { periodRange, type Period } from "@/lib/period";
 import { sum } from "@/lib/finance";
-import { inr, num, fmtDate } from "@/lib/format";
+import { inr, num, fmtDate, salaryInr } from "@/lib/format";
 import { PeriodFilter } from "@/components/erp/PeriodFilter";
 import { Empty, ErrorState, Loading, PageHeader, Section } from "@/components/erp/States";
 import { Button } from "@/components/ui/button";
@@ -179,12 +179,12 @@ function Dashboard() {
             </div>
             <Panel title="Salary overview">
               <div className="grid grid-cols-[repeat(2,minmax(0,1fr))] gap-2 max-[340px]:grid-cols-1">
-                <Mini label="Salary due" value={inr(d.salaryDue)} />
-                <Mini label="Salary paid" value={inr(d.salPaid)} />
-                <Mini label="Remaining" value={inr(Math.max(0, d.salaryDue - d.salPaid))} />
+                 <Mini label="Salary due" value={salaryInr(d.salaryDue)} />
+                 <Mini label="Salary paid" value={salaryInr(d.salPaid)} />
+                 <Mini label="Remaining" value={salaryInr(Math.max(0, d.salaryDue - d.salPaid))} />
                 <Mini label="Staff" value={d.staffCount} />
                 <Mini label="Paid records" value={d.salaryRecords} />
-                <Mini label="Staff / Driver" value={`${inr(d.staffSal)} / ${inr(d.driverSal)}`} />
+                 <Mini label="Staff / Driver" value={`${salaryInr(d.staffSal)} / ${salaryInr(d.driverSal)}`} />
               </div>
             </Panel>
           </div>

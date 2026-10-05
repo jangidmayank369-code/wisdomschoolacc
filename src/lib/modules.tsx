@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { db, type Role } from "./app-context";
-import { fmtDate, fmtMonth, inr } from "./format";
+import { fmtDate, fmtMonth, inr, salaryInr } from "./format";
 import type { RefKind } from "./refs";
 
 /* =========================================================
@@ -298,7 +298,7 @@ export const MODULES: ModuleDef[] = [
       { key: "category", label: "Category" }, { key: "designation", label: "Designation" }, { key: "optional_role", label: "Optional Role" },
       { key: "joining_date", label: "Joining", render: (r) => fmtDate(r.joining_date) },
       { key: "exit_date", label: "Exit", render: (r) => fmtDate(r.exit_date) },
-      { key: "monthly_salary", label: "Monthly Salary", money: true },
+       { key: "monthly_salary", label: "Monthly Salary", render: (r) => salaryInr(r.monthly_salary) },
       { key: "status", label: "Status" },
     ],
     fields: [
@@ -328,8 +328,8 @@ export const MODULES: ModuleDef[] = [
     rowLink: (r) => `/staff/${r.staff_id}`,
     columns: [
       { key: "payment_date", label: "Date", render: (r) => fmtDate(r.payment_date) }, { key: "staff", label: "Staff", value: st },
-      { key: "payroll_month", label: "Month", render: (r) => fmtMonth(r.payroll_month) }, { key: "amount", label: "Amount", money: true },
-      { key: "salary_days", label: "Days" }, { key: "calculated_amount", label: "Calculated", money: true },
+       { key: "payroll_month", label: "Month", render: (r) => fmtMonth(r.payroll_month) }, { key: "amount", label: "Amount", render: (r) => salaryInr(r.amount) },
+       { key: "salary_days", label: "Days" }, { key: "calculated_amount", label: "Calculated", render: (r) => salaryInr(r.calculated_amount) },
       { key: "mode", label: "Mode" }, { key: "paid_by", label: "Paid by" }, { key: "reference", label: "Ref" }, { key: "change_reason", label: "Correction" },
     ],
     fields: [

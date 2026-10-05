@@ -1,6 +1,10 @@
 export const inr = (n: number | string | null | undefined) =>
   "₹" + Number(n ?? 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
 
+/** Whole rupees for salary presentation; never changes saved amounts. */
+export const salaryInr = (n: number | string | null | undefined) =>
+  "₹" + Number(n ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
 export const num = (v: unknown) => {
   const n = Number(v);
   return Number.isFinite(n) ? n : 0;
