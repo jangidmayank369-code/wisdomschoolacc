@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { employmentMonthEligibility, fuelEstimate, payrollRow } from "@/lib/finance";
+import { salaryInr } from "@/lib/format";
 
 describe("fuel estimates", () => {
   it("floors mileage and litres but keeps the exact monthly fuel rate", () => {
@@ -15,6 +16,19 @@ describe("fuel estimates", () => {
 });
 
 describe("employment-clipped payroll", () => {
+  it("pays 30 days for full February while preserving partial employment and absence rules", () => {
+    const opts = { joiningDate: "2025-04-01", exitDate: null, employmentStatus: "active", sessionStart: "2025-04-01", sessionEnd: "2026-03-31", monthStart: "2026-02-01" };
+    const full = employmentMonthEligibility(opts);
+    expect(full.eligibleDays).toBe(30);
+    expect(payrollRow({ monthlySalary: 14000, attendance: [], paid: 0, eligibleDays: full.eligibleDays })).toMatchObject({ paidDays: 30, due: 14000 });
+    expect(employmentMonthEligibility({ ...opts, joiningDate: "2026-02-01" }).eligibleDays).toBe(30);
+    expect(employmentMonthEligibility({ ...opts, joiningDate: "2026-02-10" }).eligibleDays).toBe(19);
+    expect(employmentMonthEligibility({ ...opts, exitDate: "2026-02-15" }).eligibleDays).toBe(15);
+    expect(payrollRow({ monthlySalary: 14000, attendance: [{ date: "2026-02-02", status: "absent" }, { date: "2026-02-03", status: "absent" }], paid: 0, eligibleDays: 30 }).paidDays).toBe(29);
+    expect(salaryInr(14000.27)).toBe("₹14,000");
+    expect(salaryInr(0.21)).toBe("₹0");
+    expect(salaryInr(35317.5)).toBe("₹35,318");
+  });
   it("includes joining and exit dates and caps at 30 days", () => {
     const partial = employmentMonthEligibility({ joiningDate: "2026-08-10", exitDate: "2026-08-20", employmentStatus: "left", sessionStart: "2026-04-01", sessionEnd: "2027-03-31", monthStart: "2026-08-01" });
     expect(partial).toMatchObject({ eligible: true, eligibleDays: 11, start: "2026-08-10", end: "2026-08-20" });

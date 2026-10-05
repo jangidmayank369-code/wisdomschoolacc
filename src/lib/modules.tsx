@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { db, type Role } from "./app-context";
-import { fmtDate, fmtMonth, inr } from "./format";
+import { fmtDate, fmtMonth, inr, salaryInr } from "./format";
 import type { RefKind } from "./refs";
 
 /* =========================================================
