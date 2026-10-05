@@ -185,8 +185,8 @@ export function StaffProfileView({ staffId, driver, self }: { staffId: string; d
           </StatGrid>{fuelCredit != null && fuelCredit > 0 && <p className="mt-2 text-sm">Fuel Credit: {salaryInr(fuelCredit)}</p>}</div>}
           <div><h3 className="mb-2 text-sm font-semibold">Other Payments</h3><StatGrid>
             <StatCard label="Paid (staff-linked)" value={salaryInr(otherPaid)} />
-            <StatCard label="Other Payment Balance" value={salaryInr(0)} />
-          </StatGrid><p className="mt-2 text-xs text-muted-foreground">No separate amount due is recorded for these payments.</p></div>
+            <StatCard label="Other Payment Balance" value="Not recorded" />
+          </StatGrid><p className="mt-2 text-xs text-muted-foreground">No separate amount due is recorded for these payments; no other balance is assumed.</p></div>
           <div className="border-t pt-3"><StatCard label="Total Outstanding" value={isDriver && fuelBalance == null ? "Fuel rate not set" : salaryInr(salaryBalance + (isDriver ? (fuelBalance ?? 0) : 0))} tone="warn" /></div>
         </div>
       </Section>}

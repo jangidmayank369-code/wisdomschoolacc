@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { db, useApp } from "@/lib/app-context";
 import { dailySalary } from "@/lib/finance";
-import { inr } from "@/lib/format";
+import { salaryInr } from "@/lib/format";
 import { DataTable } from "@/components/erp/DataTable";
 import { Empty, ErrorState, Loading, PageHeader } from "@/components/erp/States";
 
@@ -35,8 +35,8 @@ function Drivers() {
           { key: "n", label: "Driver", value: (r) => `${r.staff?.name} (${r.staff?.employee_id})` },
           { key: "v", label: "Vehicle", value: (r) => r.va?.vehicles?.vehicle_no ?? "Not assigned" },
           { key: "route", label: "Route", value: (r) => r.va?.route ?? "" },
-          { key: "monthly_salary", label: "Salary", money: true },
-          { key: "d", label: "Daily", value: (r) => inr(dailySalary(r.monthly_salary)) },
+           { key: "monthly_salary", label: "Salary", render: (r) => salaryInr(r.monthly_salary) },
+           { key: "d", label: "Daily", value: (r) => salaryInr(dailySalary(r.monthly_salary)) },
           { key: "m", label: "Mobile", value: (r) => r.staff?.mobile },
         ]} />
       )}
