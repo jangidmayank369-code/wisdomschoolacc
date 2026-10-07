@@ -1221,6 +1221,7 @@ export type Database = {
           created_by: string | null
           date: string
           expense_type: string
+          for_month: string | null
           id: string
           is_reversed: boolean
           mode: string
@@ -1240,6 +1241,7 @@ export type Database = {
           created_by?: string | null
           date?: string
           expense_type?: string
+          for_month?: string | null
           id?: string
           is_reversed?: boolean
           mode?: string
@@ -1259,6 +1261,7 @@ export type Database = {
           created_by?: string | null
           date?: string
           expense_type?: string
+          for_month?: string | null
           id?: string
           is_reversed?: boolean
           mode?: string

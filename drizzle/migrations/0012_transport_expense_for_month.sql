@@ -1,0 +1,2 @@
+ALTER TABLE public.transport_expenses ADD COLUMN IF NOT EXISTS for_month date;
+COMMENT ON COLUMN public.transport_expenses.for_month IS 'Month the payment is against (first of month); null for legacy rows, which fall back to date.';

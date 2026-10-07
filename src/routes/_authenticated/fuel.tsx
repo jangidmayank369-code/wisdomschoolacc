@@ -49,7 +49,7 @@ function FuelSummary() {
       const [km, rates, exp, veh] = await Promise.all([
         db.from("monthly_vehicle_km").select("id, month, total_km, vehicle_id, staff(name)").eq("session_id", sid),
         db.from("fuel_rates").select("month, fuel_type, rate_per_litre").eq("session_id", sid).eq("status", "active"),
-        db.from("transport_expenses").select("date, amount, vehicle_id").eq("session_id", sid).eq("is_reversed", false).eq("expense_type", "Fuel"),
+        db.from("transport_expenses").select("date, for_month, amount, vehicle_id").eq("session_id", sid).eq("is_reversed", false).eq("expense_type", "Fuel"),
         db.from("vehicles").select("id, vehicle_no, fuel_average_kmpl"),
       ]);
       const err = km.error ?? rates.error ?? exp.error ?? veh.error;
@@ -72,14 +72,15 @@ function FuelSummary() {
         row.km = Math.round(Number(r.total_km));
         row.driver = r.staff?.name ?? "—";
       }
-      for (const r of exp.data as Row[]) add(r.date, r.vehicle_id).actual += Number(r.amount);
+      // "For Month" decides the month; legacy rows without it fall back to the payment date.
+      for (const r of exp.data as Row[]) add(r.for_month ?? r.date, r.vehicle_id).actual += Number(r.amount);
       return [...keys.values()].sort((a, b) => (a.month < b.month ? -1 : 1)).map((r) => {
         const v = r.vid ? vmap.get(r.vid) : null;
         const rate = rateFor(r.month);
         const est = fuelEstimate(r.km, v?.fuel_average_kmpl, rate?.rate_per_litre);
         const actual = Number(r.actual);
         return { ...r, rawKm: r.km as number, km: est.km, actual, vehicle: v?.vehicle_no ?? "—", avg: est.average, rate: est.rate, litres: est.litres, cost: est.cost,
-          balance: est.cost == null ? null : Math.max(0, est.cost - actual), credit: est.cost == null ? null : Math.max(0, actual - est.cost) };
+          balance: est.cost == null ? null : est.cost - actual, credit: est.cost == null ? null : Math.max(0, actual - est.cost) };
       });
     },
   });
@@ -100,10 +101,11 @@ function FuelSummary() {
         { key: "rate", label: "Fuel Rate Used", value: (r) => r.rate == null ? "Fuel rate not set" : `${moneyTwo(r.rate)}/L` },
         { key: "cost", label: "Estimated Fuel Cost", value: (r) => dash(r.cost, moneyTwo) },
         { key: "actual", label: "Actual Fuel Paid", value: (r) => inr(r.actual) },
-        { key: "balance", label: "Fuel Balance", value: (r) => dash(r.balance, moneyTwo) },
+        { key: "balance", label: "Fuel Balance (− = credit)", value: (r) => dash(r.balance, (n) => (n < 0 ? "-" : "") + moneyTwo(Math.abs(n))) },
         { key: "credit", label: "Fuel Credit", value: (r) => dash(r.credit, moneyTwo) },
       ]} />
-       <p className="text-sm">Session totals — KM {Math.round(sum(rows, (r) => r.rawKm)).toLocaleString("en-IN")} · Estimated {moneyTwo(sum(rows, (r) => r.cost))} · Paid {inr(sum(rows, (r) => r.actual))} · Balance {moneyTwo(sum(rows, (r) => r.balance))} · Credit {moneyTwo(sum(rows, (r) => r.credit))}</p>
+       <p className="text-sm">Session totals — KM {Math.round(sum(rows, (r) => r.rawKm)).toLocaleString("en-IN")} · Estimated {moneyTwo(sum(rows, (r) => r.cost))} · Paid {inr(sum(rows, (r) => r.actual))} · Balance {moneyTwo(sum(rows, (r) => Math.max(0, r.balance ?? 0)))} · Credit {moneyTwo(sum(rows, (r) => r.credit))}</p>
+       <p className="text-xs text-muted-foreground">Payments are counted in their "For Month"; older payments without one use their payment date.</p>
     </div>
   );
 }

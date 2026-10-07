@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { db, useApp } from "@/lib/app-context";
 import { monthEnd, today, fmtMonth, inr, salaryInr } from "@/lib/format";
-import { payrollRow, salaryFromCounts, dailySalary, sum, employmentMonthEligibility } from "@/lib/finance";
+import { payrollRow, salaryFromCounts, dailySalary, sum, employmentMonthEligibility, latestPayableMonth, isSalaryMonthPayable } from "@/lib/finance";
 import { downloadCsv } from "@/lib/csv";
 import { getModule, type Column, type Field, type Row } from "@/lib/modules";
 import { DataTable } from "@/components/erp/DataTable";
@@ -50,7 +50,8 @@ function Payroll() {
   const { session, user, isAdmin } = useApp();
   const qc = useQueryClient();
   const nav = useNavigate();
-  const [month, setMonth] = useState(today().slice(0, 7));
+  const [month, setMonth] = useState(latestPayableMonth(today()));
+  const payable = isSalaryMonthPayable(month, today());
   const [pay, setPay] = useState<Row | null>(null);
   const [days, setDays] = useState("");
   const [fix, setFix] = useState<Row | null>(null);
@@ -80,7 +81,7 @@ function Payroll() {
         const calculationDays = !eligibility.eligible && historical ? 30 : eligibility.eligibleDays;
         return {
         id: s.staff_id, staff_id: s.staff_id, name: `${s.staff?.name} (${s.staff?.employee_id})`, designation: s.designation,
-        eligibleDays: calculationDays, canPay: eligibility.eligible, exit_date: s.exit_date,
+        eligibleDays: calculationDays, canPay: eligibility.eligible && (isSalaryMonthPayable(m0, today()) || !!period), exit_date: s.exit_date,
         review: !!s.exit_date && m0.slice(0, 7) > s.exit_date.slice(0, 7) && historical,
         ...payrollRow({
           monthlySalary: Number(s.monthly_salary),
@@ -104,6 +105,7 @@ function Payroll() {
           <Button variant="outline" size="sm" onClick={() => window.print()}>Print</Button>
         </>
       } />
+      {!payable && <p className="rounded-md bg-warning/15 p-2 text-sm">{fmtMonth(m0)} salary becomes payable next month. Figures below are a preview only; payment is allowed only after an admin correction is saved for this month.</p>}
       {q.isLoading ? <Loading /> : q.error ? <ErrorState error={q.error} /> : !rows.length ? <Empty text="No active staff employment in this session." /> : (
         <>
           <StatGrid>
