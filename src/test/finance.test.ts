@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { employmentMonthEligibility, fuelEstimate, payrollRow } from "@/lib/finance";
+import { employmentMonthEligibility, fuelEstimate, isSalaryMonthPayable, latestPayableMonth, payrollRow } from "@/lib/finance";
 import { salaryInr } from "@/lib/format";
 
 describe("fuel estimates", () => {
@@ -37,5 +37,20 @@ describe("employment-clipped payroll", () => {
 
   it("excludes future months after exit", () => {
     expect(employmentMonthEligibility({ joiningDate: "2026-04-01", exitDate: "2026-09-15", employmentStatus: "left", sessionStart: "2026-04-01", sessionEnd: "2027-03-31", monthStart: "2026-10-01" }).eligibleDays).toBe(0);
+  });
+});
+
+describe("salary cycle and signed balances", () => {
+  it("makes a month payable only in the following month", () => {
+    expect(latestPayableMonth("2026-10-06")).toBe("2026-09");
+    expect(latestPayableMonth("2027-01-03")).toBe("2026-12");
+    expect(isSalaryMonthPayable("2026-09-01", "2026-10-06")).toBe(true);
+    expect(isSalaryMonthPayable("2026-10-01", "2026-10-06")).toBe(false);
+  });
+  it("shows overpayment as a negative whole-rupee balance", () => {
+    expect(salaryInr(14000 - 15000)).toBe("-₹1,000");
+    expect(salaryInr(10000 - 12000)).toBe("-₹2,000");
+    expect(salaryInr(-0.21)).toBe("₹0");
+    expect([5000, 3000, 2000].reduce((a, b) => a + b, 0)).toBe(10000);
   });
 });
