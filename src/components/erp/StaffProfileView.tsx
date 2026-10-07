@@ -129,22 +129,27 @@ export function StaffProfileView({ staffId, driver, self }: { staffId: string; d
     fuelByMonth.set(month, { ...previous, estimated: est.cost == null || previous?.estimated === null ? null : Number(previous?.estimated ?? 0) + est.cost });
   });
   driverFuel.forEach((f) => {
-    const month = f.date.slice(0, 7);
+    const month = (f.for_month ?? f.date).slice(0, 7); // For Month first; legacy rows use payment date
     const row = fuelByMonth.get(month) ?? { estimated: 0 };
     row.paid = Number(row.paid ?? 0) + Number(f.amount);
     fuelByMonth.set(month, row);
   });
-  const salaryBalance = Math.max(0, tot.due - tot.paid);
+  // Signed balances: negative = paid extra (credit). Credits are also shown separately.
+  const salaryBalance = tot.due - tot.paid;
   const salaryCredit = Math.max(0, tot.paid - tot.due);
-  const fuelBalance = missingRateMonths ? null : Math.max(0, estimatedFuelCost - fuelPaid);
+  const fuelBalance = missingRateMonths ? null : estimatedFuelCost - fuelPaid;
   const fuelCredit = missingRateMonths ? null : Math.max(0, fuelPaid - estimatedFuelCost);
+  const totalDue = tot.due + (isDriver ? estimatedFuelCost : 0);
+  const totalPaid = tot.paid + (isDriver ? fuelPaid : 0) + otherPaid;
+  const outstanding = Math.max(0, salaryBalance) + (isDriver ? Math.max(0, fuelBalance ?? 0) : 0);
+  const netBalance = salaryBalance + (isDriver ? (fuelBalance ?? 0) : 0);
   const driverMonths = [...new Set([...curMonths.map((m) => m.month.slice(0, 7)), ...fuelByMonth.keys()])].sort().map((month) => {
     const salary = curMonths.find((m) => m.month.slice(0, 7) === month);
     const fuelMonth = fuelByMonth.get(month) ?? {};
     const fuelEstimated = fuelMonth.estimated == null ? null : Number(fuelMonth.estimated);
     const monthFuelPaid = Number(fuelMonth.paid ?? 0);
-    return { id: month, month: `${month}-01`, salaryDue: Number(salary?.due ?? 0), salaryPaid: Number(salary?.paid ?? 0), salaryBalance: Math.max(0, Number(salary?.due ?? 0) - Number(salary?.paid ?? 0)),
-      fuelEstimated, fuelPaid: monthFuelPaid, fuelBalance: fuelEstimated == null ? null : Math.max(0, fuelEstimated - monthFuelPaid), fuelCredit: fuelEstimated == null ? 0 : Math.max(0, monthFuelPaid - fuelEstimated) };
+    return { id: month, month: `${month}-01`, salaryDue: Number(salary?.due ?? 0), salaryPaid: Number(salary?.paid ?? 0), salaryBalance: Number(salary?.due ?? 0) - Number(salary?.paid ?? 0),
+      fuelEstimated, fuelPaid: monthFuelPaid, fuelBalance: fuelEstimated == null ? null : fuelEstimated - monthFuelPaid, fuelCredit: fuelEstimated == null ? 0 : Math.max(0, monthFuelPaid - fuelEstimated) };
   });
   const todayAtt = d.att.find((a) => a.date === today());
 
@@ -176,21 +181,27 @@ export function StaffProfileView({ staffId, driver, self }: { staffId: string; d
 
       {cur && <Section title="Staff Financial Summary">
         <div className="space-y-4">
+          <StatGrid>
+            <StatCard label="Total Due" value={isDriver && missingRateMonths ? `${salaryInr(totalDue)} + fuel rate not set` : salaryInr(totalDue)} />
+            <StatCard label="Total Paid" value={salaryInr(totalPaid)} tone="good" />
+            <StatCard label={netBalance < 0 ? "Net Credit / Overpayment" : "Net Balance (payable)"} value={salaryInr(Math.abs(netBalance))} tone={netBalance > 0 ? "warn" : netBalance < 0 ? "bad" : undefined} />
+          </StatGrid>
+          <p className="text-xs text-muted-foreground">Negative balance (−₹) means paid extra. Other payments have no recorded due, so they count in Total Paid only.</p>
           <div><h3 className="mb-2 text-sm font-semibold">Salary</h3><StatGrid>
             <StatCard label="Total Salary Due" value={salaryInr(tot.due)} />
             <StatCard label="Paid" value={salaryInr(tot.paid)} tone="good" />
-            <StatCard label="Balance" value={salaryInr(salaryBalance)} tone={salaryBalance > 0 ? "warn" : undefined} />
-          </StatGrid>{salaryCredit > 0 && <p className="mt-2 text-sm">Salary Credit / Overpayment: {salaryInr(salaryCredit)}</p>}</div>
+            <StatCard label="Balance" value={salaryInr(salaryBalance)} tone={salaryBalance > 0 ? "warn" : salaryBalance < 0 ? "bad" : undefined} />
+          </StatGrid>{salaryCredit > 0 && <p className="mt-2 text-sm font-semibold text-destructive">Salary Credit / Overpayment: {salaryInr(salaryCredit)} paid extra</p>}</div>
           {isDriver && <div><h3 className="mb-2 text-sm font-semibold">Fuel / Transport</h3><StatGrid>
             <StatCard label="Total Fuel Cost" value={missingRateMonths ? "Fuel rate not set" : salaryInr(estimatedFuelCost)} />
             <StatCard label="Paid" value={salaryInr(fuelPaid)} tone="good" />
-            <StatCard label="Balance" value={fuelBalance == null ? "Fuel rate not set" : salaryInr(fuelBalance)} tone={fuelBalance != null && fuelBalance > 0 ? "warn" : undefined} />
-          </StatGrid>{fuelCredit != null && fuelCredit > 0 && <p className="mt-2 text-sm">Fuel Credit: {salaryInr(fuelCredit)}</p>}</div>}
+            <StatCard label="Balance" value={fuelBalance == null ? "Fuel rate not set" : salaryInr(fuelBalance)} tone={fuelBalance != null && fuelBalance > 0 ? "warn" : fuelBalance != null && fuelBalance < 0 ? "bad" : undefined} />
+          </StatGrid>{fuelCredit != null && fuelCredit > 0 && <p className="mt-2 text-sm font-semibold text-destructive">Fuel Credit: {salaryInr(fuelCredit)} paid extra</p>}</div>}
           <div><h3 className="mb-2 text-sm font-semibold">Other Payments</h3><StatGrid>
             <StatCard label="Paid (staff-linked)" value={salaryInr(otherPaid)} />
-            <StatCard label="Other Payment Balance" value="Not recorded" />
-          </StatGrid><p className="mt-2 text-xs text-muted-foreground">No separate amount due is recorded for these payments; no other balance is assumed.</p></div>
-          <div className="border-t pt-3"><StatCard label="Total Outstanding" value={isDriver && fuelBalance == null ? "Fuel rate not set" : salaryInr(salaryBalance + (isDriver ? (fuelBalance ?? 0) : 0))} tone="warn" /></div>
+            <StatCard label="Due / Balance" value="Not recorded" />
+          </StatGrid></div>
+          <div className="border-t pt-3"><StatCard label="Total Outstanding (still payable)" value={isDriver && fuelBalance == null ? `${salaryInr(outstanding)} + fuel rate not set` : salaryInr(outstanding)} tone="warn" /></div>
         </div>
       </Section>}
 
