@@ -7,5 +7,6 @@
 - [x] Replace transport UI, fuel math, and driver summaries.
 - [x] Fix More drawer and bottom navigation conflict.
 - [x] Verify protected data counts, duplicates, tests, typecheck, build, and mobile behavior.
-- [ ] Fix February fixed-month eligibility and whole-rupee salary presentation.
-- [ ] Unify staff financial summary using only explicitly linked payments; verify typecheck/build.
+- [x] Fix February fixed-month eligibility and whole-rupee salary presentation.
+- [x] Unify staff financial summary using only explicitly linked payments; verify typecheck/build.
+- [x] Separate Payment Date and For Month; salary cycle; signed credits.
