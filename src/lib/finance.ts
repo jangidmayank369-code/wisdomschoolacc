@@ -71,6 +71,13 @@ export function payrollRow(opts: {
 
 export const sum = <T,>(rows: T[], f: (r: T) => unknown) => rows.reduce((s, r) => s + num(f(r)), 0);
 
+/** Salary cycle: a month's salary becomes payable in the following month. Returns "yyyy-mm". */
+export const latestPayableMonth = (todayIso: string) => {
+  const [y, m] = todayIso.slice(0, 7).split("-").map(Number);
+  return m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, "0")}`;
+};
+export const isSalaryMonthPayable = (monthIso: string, todayIso: string) => monthIso.slice(0, 7) <= latestPayableMonth(todayIso);
+
 /** Whole KM, effective average and litres; retain the saved rate and round only the monetary result. */
 export const fuelEstimate = (km: number, kmpl: number | null | undefined, ratePerLitre: number | null | undefined) => {
   const roundedKm = Math.round(num(km));

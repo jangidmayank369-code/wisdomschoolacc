@@ -3,7 +3,7 @@ export const inr = (n: number | string | null | undefined) =>
 
 /** Whole rupees for salary presentation; never changes saved amounts. */
 export const salaryInr = (n: number | string | null | undefined) =>
-  "₹" + Number(n ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  (Math.round(Number(n ?? 0)) < 0 ? "-₹" : "₹") + Math.abs(Number(n ?? 0)).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
 export const num = (v: unknown) => {
   const n = Number(v);
