@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle } from "lucide-react";
 import { db, useApp } from "@/lib/app-context";
 import { fmtDate, fmtMonth, monthEnd, monthsBetween, salaryInr, today } from "@/lib/format";
-import { dailySalary, employmentMonthEligibility, fuelEstimate, payrollRow, sum } from "@/lib/finance";
+import { dailySalary, employmentMonthEligibility, fuelEstimate, isSalaryMonthPayable, payrollRow, sum } from "@/lib/finance";
 import type { Column, Row } from "@/lib/modules";
 import { DataTable } from "./DataTable";
 import { ResourcePage } from "./ResourcePage";
@@ -43,7 +43,7 @@ export function StaffProfileView({ staffId, driver, self }: { staffId: string; d
         sid ? db.from("staff_attendance").select("date, status").eq("staff_id", staffId).eq("session_id", sid) : Promise.resolve({ data: [], error: null }),
         sid ? db.from("vehicle_assignments").select("*, vehicles(vehicle_no, model, fuel_average_kmpl)").eq("staff_id", staffId).eq("session_id", sid).maybeSingle() : Promise.resolve({ data: null, error: null }),
         sid ? db.from("monthly_vehicle_km").select("month, total_km, vehicle_id, vehicles(vehicle_no, fuel_average_kmpl)").eq("staff_id", staffId).eq("session_id", sid).order("month") : Promise.resolve({ data: [], error: null }),
-        sid ? db.from("transport_expenses").select("date, amount, expense_type, staff_id, vehicle_id").eq("session_id", sid).eq("is_reversed", false).limit(5000) : Promise.resolve({ data: [], error: null }),
+        sid ? db.from("transport_expenses").select("date, for_month, amount, expense_type, staff_id, vehicle_id").eq("session_id", sid).eq("is_reversed", false).limit(5000) : Promise.resolve({ data: [], error: null }),
         sid ? db.from("fuel_rates").select("month, fuel_type, rate_per_litre").eq("session_id", sid).eq("status", "active") : Promise.resolve({ data: [], error: null }),
       ]);
       const err = st.error ?? ss.error ?? pays.error ?? pp.error ?? att.error ?? va.error ?? km.error ?? fuel.error ?? rates.error;
@@ -80,14 +80,17 @@ export function StaffProfileView({ staffId, driver, self }: { staffId: string; d
     if (start > end) continue;
     for (const month of monthsBetween(start, end)) {
       const over = d.pp.find((p) => p.session_id === ses.session_id && p.month === month);
-      const paid = sum(d.pays.filter((p) => p.session_id === ses.session_id && p.payroll_month === month), (p) => p.amount);
+      const monthPays = d.pays.filter((p) => p.session_id === ses.session_id && p.payroll_month === month);
+      // Salary cycle: a month is due only once payable (next month) unless admin saved it or a payment exists.
+      if (!isSalaryMonthPayable(month, nowMonth) && !over && !monthPays.length) continue;
+      const paid = sum(monthPays, (p) => p.amount);
       const eligibility = employmentMonthEligibility({ joiningDate: ses.joining_date, exitDate: ses.exit_date, employmentStatus: ses.status === "inactive" ? "active" : ses.status,
         sessionStart: a.start_date, sessionEnd: a.end_date, monthStart: month });
       const due = over ? Number(over.salary_due) : ses.session_id === sid
         ? payrollRow({ monthlySalary: Number(ses.monthly_salary), eligibleDays: eligibility.eligibleDays,
             attendance: d.att.filter((row) => row.date >= month && row.date <= monthEnd(month)) as { date: string; status: string }[], paid: 0 }).calculated
         : Math.round(dailySalary(Number(ses.monthly_salary)) * eligibility.eligibleDays * 100) / 100;
-      history.push({ id: ses.session_id + month, session: a.name, session_id: ses.session_id, month, due, paid, balance: Math.max(0, due - paid), credit: Math.max(0, paid - due), eligibleDays: eligibility.eligibleDays });
+      history.push({ id: ses.session_id + month, session: a.name, session_id: ses.session_id, month, due, paid, balance: due - paid, credit: Math.max(0, paid - due), eligibleDays: eligibility.eligibleDays });
     }
   }
   const cur = d.sessions.find((x) => x.session_id === sid);
@@ -95,7 +98,7 @@ export function StaffProfileView({ staffId, driver, self }: { staffId: string; d
     ...payrollRow({
       monthlySalary: Number(cur?.monthly_salary ?? 0), dueOverride: h.due,
        attendance: d.att.filter((a) => a.date >= h.month && a.date <= monthEnd(h.month)) as { date: string; status: string }[], paid: h.paid, eligibleDays: h.eligibleDays,
-    }), id: h.id, month: h.month,
+    }), id: h.id, month: h.month, balance: h.balance,
   }));
   const tot = { due: sum(curMonths, (r) => r.due), paid: sum(curMonths, (r) => r.paid) };
   const all = { due: sum(history, (r) => r.due), paid: sum(history, (r) => r.paid) };
