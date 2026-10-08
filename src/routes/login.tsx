@@ -44,8 +44,15 @@ function LoginPage() {
       if (error) throw error;
       const metadata = data.user?.user_metadata;
       const displayName = metadata?.full_name ?? metadata?.display_name ?? metadata?.name;
-      window.dispatchEvent(new CustomEvent(WELCOME_EVENT, { detail: typeof displayName === "string" ? displayName.trim() : "" }));
       navigate({ to: "/dashboard" });
+      if (data.user) {
+        void supabase.from("profiles").select("full_name").eq("id", data.user.id).maybeSingle().then(({ data: profile }) => {
+          const actualName = profile?.full_name || displayName;
+          window.dispatchEvent(new CustomEvent(WELCOME_EVENT, { detail: typeof actualName === "string" ? actualName.trim() : "" }));
+        });
+      } else {
+        window.dispatchEvent(new CustomEvent(WELCOME_EVENT, { detail: "" }));
+      }
     } catch (e) {
       setErr((e as Error).message || "Sign in failed");
     } finally { setBusy(false); }
