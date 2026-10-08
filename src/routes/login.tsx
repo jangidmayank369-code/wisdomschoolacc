@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { needsSetup, setupFirstAdmin } from "@/lib/users.functions";
+import { SchoolLogo } from "@/components/erp/SchoolLogo";
+import { WELCOME_EVENT } from "@/components/erp/BrandExperience";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -38,20 +40,31 @@ function LoginPage() {
     setBusy(true); setErr("");
     try {
       if (setup) await setupFirstAdmin({ data: { email, password, full_name: name } });
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
+      const metadata = data.user?.user_metadata;
+      const displayName = metadata?.full_name ?? metadata?.display_name ?? metadata?.name;
       navigate({ to: "/dashboard" });
+      if (data.user) {
+        void supabase.from("profiles").select("full_name").eq("id", data.user.id).maybeSingle().then(({ data: profile }) => {
+          const actualName = profile?.full_name || displayName;
+          window.dispatchEvent(new CustomEvent(WELCOME_EVENT, { detail: typeof actualName === "string" ? actualName.trim() : "" }));
+        });
+      } else {
+        window.dispatchEvent(new CustomEvent(WELCOME_EVENT, { detail: "" }));
+      }
     } catch (e) {
       setErr((e as Error).message || "Sign in failed");
     } finally { setBusy(false); }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-primary/5 p-4">
-      <form onSubmit={submit} className="w-full max-w-sm space-y-4 rounded-xl border bg-card p-6 shadow-sm">
+    <div className="brand-login flex min-h-dvh items-center justify-center p-4">
+      <form onSubmit={submit} className="w-full max-w-sm space-y-4 rounded-lg border bg-card p-6 shadow-sm">
         <div className="text-center">
-          <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-xl font-extrabold text-primary-foreground">W</div>
-          <h1 className="text-lg font-bold">Wisdom Public School – Doomra</h1>
+          <SchoolLogo className="mx-auto h-36 w-36" />
+          <h1 className="text-xl font-extrabold text-primary">WPS DOOMRA ERP</h1>
+          <p className="mt-1 text-xs font-semibold text-muted-foreground">Wisdom Public School – Doomra</p>
           <p className="text-sm text-muted-foreground">{setup ? "First-time setup: create the admin account" : "Sign in to the school ERP"}</p>
         </div>
         {setup && (

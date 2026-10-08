@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { db } from "@/lib/app-context";
 import { fmtDate, inr } from "@/lib/format";
 import { ErrorState, Loading } from "@/components/erp/States";
+import { SchoolLogo } from "@/components/erp/SchoolLogo";
 
 export const Route = createFileRoute("/_authenticated/receipt/$id")({
   head: () => ({ meta: [{ title: "Fee Receipt — WPS Doomra ERP" }] }),
@@ -48,7 +49,7 @@ function Receipt() {
       </div>
       <div className={`print-area mx-auto rounded-lg border bg-card p-5 ${SIZES[size]}`}>
         <div className="border-b pb-3 text-center">
-          {set?.logo_url && <img src={set.logo_url} alt="School logo" className="mx-auto mb-1 h-12" />}
+          <SchoolLogo className="mx-auto mb-1 h-16 w-14" />
           <div className="text-lg font-extrabold text-primary">{set?.school_name}</div>
           {set?.address && <div className="text-xs">{set.address}</div>}
           {set?.phone && <div className="text-xs">Ph: {set.phone}</div>}
