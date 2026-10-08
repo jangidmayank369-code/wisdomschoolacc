@@ -10,3 +10,4 @@
 - [x] Fix February fixed-month eligibility and whole-rupee salary presentation.
 - [x] Unify staff financial summary using only explicitly linked payments; verify typecheck/build.
 - [x] Separate Payment Date and For Month; salary cycle; signed credits.
+- [ ] Apply official logo, lightweight splash and personalized welcome; verify navigation and unchanged database counts.

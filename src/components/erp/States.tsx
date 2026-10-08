@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
-import { Loader2, Inbox, AlertTriangle } from "lucide-react";
+import { Loader2, AlertTriangle } from "lucide-react";
 import { inr } from "@/lib/format";
+import { SchoolLogo } from "./SchoolLogo";
 
 export const Loading = ({ text = "Loading…" }: { text?: string }) => (
   <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />{text}</div>
@@ -8,7 +9,7 @@ export const Loading = ({ text = "Loading…" }: { text?: string }) => (
 
 export const Empty = ({ text = "No data available", children }: { text?: string; children?: ReactNode }) => (
   <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed bg-card py-10 text-center">
-    <Inbox className="h-8 w-8 text-muted-foreground" />
+    <SchoolLogo className="h-16 w-14" decorative />
     <p className="text-sm text-muted-foreground">{text}</p>
     {children && <div className="flex flex-wrap justify-center gap-2">{children}</div>}
   </div>

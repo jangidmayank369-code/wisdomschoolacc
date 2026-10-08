@@ -7,6 +7,8 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useApp } from "@/lib/app-context";
+import { SchoolLogo } from "./SchoolLogo";
+import { Button } from "@/components/ui/button";
 
 type NavItem = { to: string; label: string; icon: typeof Users; roles: ("admin" | "accountant" | "staff")[] };
 const A = ["admin"] as NavItem["roles"];
@@ -115,8 +117,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       {open && (
         <div className="no-print fixed inset-0 z-[10000] h-dvh lg:hidden">
           <div className="absolute inset-0 bg-foreground/40" onClick={() => setOpen(false)} />
-          <aside className="absolute inset-y-0 left-0 h-dvh w-72 overflow-y-auto overscroll-contain bg-sidebar pb-[env(safe-area-inset-bottom)]">
-            <div className="flex items-center justify-between pr-2"><Brand /><button aria-label="Close menu" onClick={() => setOpen(false)} className="text-sidebar-foreground"><X /></button></div>
+          <aside aria-label="School menu" className="absolute inset-y-0 left-0 h-dvh w-full max-w-sm overflow-y-auto overscroll-contain bg-sidebar pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]">
+            <div className="flex items-center justify-between pr-2"><Brand /><Button variant="ghost" size="icon" aria-label="Close menu" onClick={() => setOpen(false)} className="shrink-0 text-sidebar-foreground"><X /></Button></div>
             {nav}
           </aside>
         </div>
@@ -124,7 +126,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="min-w-0 max-w-full lg:pl-60">
         <header className="no-print sticky top-0 z-20 grid h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-b bg-card/95 px-3 backdrop-blur sm:px-5">
           <div className="flex min-w-0 items-center gap-2"><button aria-label="Open menu" className="shrink-0 lg:hidden" onClick={() => setOpen(true)}><Menu className="h-5 w-5" /></button>
-          <span className="truncate text-sm font-bold text-primary lg:hidden">WPS Doomra</span></div>
+           <SchoolLogo className="h-10 w-9 shrink-0 lg:hidden" decorative /><span className="truncate text-sm font-bold text-primary lg:hidden">WPS Doomra</span></div>
           <div className="flex min-w-0 items-center gap-2">
             <SessionSelect />
             <span className="hidden text-xs text-muted-foreground sm:inline">{user?.email}</span>
@@ -158,7 +160,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 function Brand() {
   return (
     <div className="flex items-center gap-2 px-4 py-4">
-      <div className="flex h-9 w-9 items-center justify-center rounded-md bg-sidebar-primary text-sm font-extrabold text-sidebar-primary-foreground">W</div>
+      <SchoolLogo className="h-14 w-12 shrink-0" />
       <div className="leading-tight">
         <div className="text-sm font-bold text-sidebar-accent-foreground">Wisdom Public School</div>
         <div className="text-xs text-sidebar-foreground/70">Doomra · ERP</div>
