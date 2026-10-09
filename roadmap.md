@@ -11,6 +11,6 @@
 - [x] Unify staff financial summary using only explicitly linked payments; verify typecheck/build.
 - [x] Separate Payment Date and For Month; salary cycle; signed credits.
 - [x] Apply official logo, lightweight splash and personalized welcome; verify navigation and unchanged database counts.
-- [ ] Refine existing splash and dashboard quick actions.
-- [ ] Add session-safe stationery issuing using existing charges, with confirmation and duplicate protection.
-- [ ] Show stationery totals/history in student fees; verify without creating test records.
+- [x] Refine existing splash and dashboard quick actions.
+- [x] Add session-safe stationery issuing using existing charges, with confirmation and duplicate protection.
+- [x] Show stationery totals/history in student fees; verify search, totals, confirmation, session switching and mobile without creating test records. Actual saving/collection untested to preserve records; automatic preview build passed, separate typecheck unavailable.

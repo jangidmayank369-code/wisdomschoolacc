@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Search, Trash2, NotebookPen } from "lucide-react";
 import { toast } from "sonner";
@@ -30,6 +30,18 @@ function StationeryForm({ sessionId, sessionName, canIssue }: { sessionId: strin
   const [saving, setSaving] = useState(false);
   const busy = useRef(false);
   const issueId = useRef<string | null>(null);
+  const retryKey = `wps.stationery.pending.${sessionId}`;
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(retryKey);
+      if (!raw) return;
+      const draft = JSON.parse(raw) as { id: string; student: Student; items: Item[] };
+      if (draft.id && draft.student?.student_id && Array.isArray(draft.items)) {
+        issueId.current = draft.id; setStudent(draft.student); setItems(draft.items);
+      }
+    } catch { sessionStorage.removeItem(retryKey); }
+  }, [retryKey]);
+  const clearRetry = () => { issueId.current = null; sessionStorage.removeItem(retryKey); };
   const students = useQuery({ queryKey: ["stationery-students", sessionId], enabled: canIssue, queryFn: async () => {
     const r = await db.from("student_sessions").select("student_id, class, students!inner(name, admission_no, father_name, mother_name)").eq("session_id", sessionId).limit(20000);
     if (r.error) throw r.error;
@@ -37,16 +49,17 @@ function StationeryForm({ sessionId, sessionName, canIssue }: { sessionId: strin
   }});
   const total = Math.round(items.reduce((n, i) => n + Number(i.quantity || 0) * Number(i.price || 0), 0) * 100) / 100;
   const valid = !!student && items.length > 0 && items.every((i) => i.name.trim().length > 0 && i.name.trim().length <= 100 && Number.isInteger(Number(i.quantity)) && Number(i.quantity) > 0 && Number(i.quantity) <= 100000 && i.price !== "" && Number.isFinite(Number(i.price)) && Number(i.price) >= 0 && Number(i.price) <= 10000000 && Math.abs(Number(i.price) * 100 - Math.round(Number(i.price) * 100)) < 0.00001) && total > 0;
-  const change = (key: string, field: keyof Item, value: string) => { issueId.current = null; setItems((old) => old.map((i) => i.key === key ? { ...i, [field]: value } : i)); };
+  const change = (key: string, field: keyof Item, value: string) => { clearRetry(); setItems((old) => old.map((i) => i.key === key ? { ...i, [field]: value } : i)); };
   const save = async () => {
     if (busy.current || !valid || !student) return;
     busy.current = true; setSaving(true);
     issueId.current ??= crypto.randomUUID();
     try {
+      sessionStorage.setItem(retryKey, JSON.stringify({ id: issueId.current, student, items }));
       const r = await db.rpc("issue_stationery", { _id: issueId.current, _student_id: student.student_id, _session_id: sessionId, _items: items.map((i) => ({ name: i.name.trim(), quantity: Number(i.quantity), price: Number(i.price) })) });
       if (r.error) throw r.error;
       toast.success("Stationery charge saved — unpaid");
-      setConfirming(false); setStudent(null); setItems([]); setSearch(""); issueId.current = null;
+      setConfirming(false); setStudent(null); setItems([]); setSearch(""); clearRetry();
       for (const key of ["stationery", "mod", "profile", "dash", "refs"]) await qc.invalidateQueries({ queryKey: [key] });
     } catch (e) { toast.error(errMsg(e)); } finally { busy.current = false; setSaving(false); }
   };
