@@ -10,14 +10,15 @@ import { sum } from "@/lib/finance";
 import type { Row } from "@/lib/modules";
 import { DataTable } from "@/components/erp/DataTable";
 import { ResourcePage } from "@/components/erp/ResourcePage";
+import { StationeryHistory } from "@/components/erp/StationeryHistory";
 import { Empty, ErrorState, Loading, PageHeader, Section, StatCard, StatGrid } from "@/components/erp/States";
 
 export const Route = createFileRoute("/_authenticated/students/$id")({
-  head: () => ({ meta: [{ title: "Student Profile — WPS Doomra ERP" }] }),
+  head: () => ({ meta: [{ title: "Student Profile — WPS Doomra ERP" }, { name: "description", content: "Student enrollment, fee charges and stationery balances at WPS Doomra." }, { property: "og:title", content: "Student Profile — WPS Doomra ERP" }, { property: "og:description", content: "Session-specific enrollment and student fees." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: StudentProfile,
 });
 
-const enFields = getModule("student_sessions")!.fields.filter((f) => !f.createOnly);
+const enFields = getModule("student_sessions")?.fields.filter((f) => !f.createOnly) ?? [];
 
 function StudentProfile() {
   const { id } = Route.useParams();
@@ -41,7 +42,8 @@ function StudentProfile() {
   });
   if (q.isLoading) return <Loading />;
   if (q.error) return <ErrorState error={q.error} />;
-  const { s, en, charges, paid, names } = q.data!;
+  if (!q.data) return <Loading />;
+  const { s, en, charges, paid, names } = q.data;
   const hist = [...sessions].reverse().map((ss) => en.find((e) => e.session_id === ss.id) ?? { session_id: ss.id, academic_sessions: { name: ss.name }, status: "" });
   const cur = en.find((e) => e.session_id === session?.id);
   const info: [string, unknown][] = [["Father", s.father_name], ["Mother", s.mother_name], ["Phone", s.phone], ["Gender", s.gender], ["DOB", fmtDate(s.dob)], ["Admission date", fmtDate(s.admission_date)], ["Address", s.address], ["Status", s.status]];
@@ -68,13 +70,15 @@ function StudentProfile() {
         ]} actions={isAdmin ? (r) => r.id ? <Button size="sm" variant="outline" onClick={() => setEditing(r)}>Edit</Button> : null : undefined} />
         <FormDialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)} title={`Edit enrollment — ${editing?.academic_sessions?.name ?? ""}`}
           fields={enFields} record={editing} refs={{}} onSubmit={async (v) => {
-            const { error } = await db.from("student_sessions").update(v).eq("id", editing!.id);
+            if (!editing) return;
+            const { error } = await db.from("student_sessions").update(v).eq("id", editing.id);
             if (error) throw error;
             await q.refetch();
           }} />
       </Section>
       {cur ? (
         <>
+          <Section title="Stationery Charges"><StationeryHistory studentId={id} /></Section>
           <ResourcePage embedded moduleKey="student_charges" where={{ student_id: id }} title="Charges" />
           <ResourcePage embedded moduleKey="fee_payments" where={{ student_id: id }} title="Payments" />
         </>

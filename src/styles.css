@@ -69,7 +69,7 @@
 }
 
 :root {
-  --brand-blue: oklch(0.36 0.12 258);
+  --brand-blue: oklch(0.23 0.08 258);
   --brand-purple: oklch(0.32 0.13 290);
   --brand-foreground: oklch(0.99 0 0);
   --brand-glow: oklch(0.75 0.1 250 / 0.32);
@@ -197,17 +197,41 @@
   animation: brand-screen-fade 1.45s ease both;
 }
 .brand-screen-content {
+  position: relative;
   width: 100%;
   max-width: 440px;
   text-align: center;
   animation: brand-reveal 650ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 .brand-splash-logo {
-  width: 200px;
-  height: 230px;
+  width: 160px;
+  height: 185px;
   margin: auto;
   filter: drop-shadow(0 0 20px var(--brand-glow));
 }
+.brand-screen-content::before {
+  content: "";
+  position: absolute;
+  width: 220px;
+  height: 220px;
+  left: 50%;
+  top: -18px;
+  margin-left: -110px;
+  border: 1px solid var(--brand-glow);
+  border-radius: 50%;
+  animation: brand-ring 1.45s ease-out both;
+  pointer-events: none;
+}
+@keyframes brand-ring { from { opacity: 0; transform: scale(0.88); } 45% { opacity: 0.6; } to { opacity: 0; transform: scale(1.06); } }
+.dashboard-action { transition: background-color 160ms ease, box-shadow 160ms ease, transform 160ms ease; border-color: color-mix(in oklch, var(--action-color) 25%, var(--border)); background: color-mix(in oklch, var(--action-color) 7%, var(--card)); }
+.dashboard-action:hover { background: color-mix(in oklch, var(--action-color) 14%, var(--card)); }
+.dashboard-action:active { transform: scale(0.98); }
+.action-icon { color: var(--action-color); background: color-mix(in oklch, var(--action-color) 14%, var(--card)); }
+.action-blue { --action-color: var(--chart-1); }
+.action-green { --action-color: var(--success); }
+.action-teal { --action-color: var(--chart-2); }
+.action-rose { --action-color: var(--destructive); }
+.action-purple { --action-color: oklch(0.52 0.17 300); }
 @keyframes brand-reveal {
   from { opacity: 0; transform: scale(0.9); }
   to { opacity: 1; transform: scale(1); }
@@ -217,5 +241,7 @@
   100% { opacity: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .brand-screen, .brand-screen-content { animation: none; }
+  .brand-screen, .brand-screen-content, .brand-screen-content::before { animation: none; }
+  .dashboard-action { transition: none; }
+  .dashboard-action:active { transform: none; }
 }

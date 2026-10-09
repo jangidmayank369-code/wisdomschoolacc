@@ -33,7 +33,7 @@ export function BrandExperience() {
     <div key={screen} className="brand-screen no-print" role="status" aria-live="polite" aria-label={screen === "splash" ? "WPS Doomra splash" : "Personalized welcome"}>
       <div className="brand-screen-content">
         <SchoolLogo className="brand-splash-logo" />
-        {screen === "splash" ? <><h1 className="mt-4 text-xl font-extrabold sm:text-2xl">WISDOM PUBLIC SCHOOL</h1><p className="mt-2 text-sm font-semibold">DOOMRA</p><p className="mt-8 text-xs font-medium">WPS DOOMRA ERP</p></> : <><h1 className="mt-4 break-words text-2xl font-bold">Welcome{name ? `, ${name}` : ""} 👋</h1><p className="mt-3 text-sm">WPS Doomra ERP</p></>}
+        {screen === "splash" ? <><h1 className="mt-5 text-2xl font-extrabold">WPS DOOMRA</h1><p className="mt-2 text-sm font-medium">School Management ERP</p></> : <><h1 className="mt-4 break-words text-2xl font-bold">Welcome{name ? `, ${name}` : ""} 👋</h1><p className="mt-3 text-sm">WPS Doomra ERP</p></>}
       </div>
     </div>
   );

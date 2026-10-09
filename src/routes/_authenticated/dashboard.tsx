@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { IndianRupee, Wallet, Clock, TrendingUp, TrendingDown, Scale, Users, UserCheck, Plus } from "lucide-react";
+import { IndianRupee, Wallet, Clock, TrendingUp, TrendingDown, Scale, Users, UserCheck, GraduationCap, Receipt, CalendarCheck, UserPlus, NotebookPen } from "lucide-react";
 import { db, useApp } from "@/lib/app-context";
 import { periodRange, type Period } from "@/lib/period";
 import { sum } from "@/lib/finance";
@@ -23,11 +23,12 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 });
 
 type Who = "admin" | "finance";
-const QUICK: { to: string; l: string; who: Who }[] = [
-  { to: "/m/students", l: "Add Student", who: "finance" }, { to: "/m/fee_payments", l: "Collect Fee", who: "finance" },
-  { to: "/m/student_charges", l: "Add Manual Fee", who: "admin" }, { to: "/payroll", l: "Pay Salary", who: "admin" },
-  { to: "/m/expenses", l: "Add Expense", who: "finance" }, { to: "/attendance", l: "Mark Attendance", who: "admin" },
-  { to: "/m/staff", l: "Add Staff", who: "admin" },
+const QUICK: { to: string; l: string; who: Who; icon: typeof Wallet; tone: string }[] = [
+  { to: "/m/students", l: "Add Student", who: "finance", icon: GraduationCap, tone: "action-blue" }, { to: "/m/fee_payments", l: "Collect Fee", who: "finance", icon: IndianRupee, tone: "action-green" },
+  { to: "/m/student_charges", l: "Add Manual Fee", who: "admin", icon: Receipt, tone: "action-teal" }, { to: "/payroll", l: "Pay Salary", who: "admin", icon: Wallet, tone: "action-blue" },
+  { to: "/m/expenses", l: "Add Expense", who: "finance", icon: TrendingDown, tone: "action-rose" }, { to: "/attendance", l: "Mark Attendance", who: "admin", icon: CalendarCheck, tone: "action-teal" },
+  { to: "/m/staff", l: "Add Staff", who: "admin", icon: UserPlus, tone: "action-green" },
+  { to: "/m/stationery", l: "Stationery Issue", who: "admin", icon: NotebookPen, tone: "action-purple" },
 ];
 type Bal = { student_id: string; admission_no: string; name: string; class: string; total_charges: number; total_paid: number };
 type Tx = { id: string; date: string; type: string; category: string; amount: number; source_module: string; source_id: string | null; reference: string | null; remarks: string | null; party: string | null; is_reversed: boolean; created_at: string };
@@ -136,9 +137,9 @@ function Dashboard() {
           )}
         </>} />
 
-      <div className="grid grid-cols-[repeat(2,minmax(0,1fr))] gap-2 sm:grid-cols-4 lg:grid-cols-7">
+      <div className="grid grid-cols-[repeat(2,minmax(0,1fr))] gap-2 sm:grid-cols-4">
         {QUICK.filter((x) => isAdmin || x.who === "finance").map((x) => (
-          <Button key={x.to} asChild variant="outline" className="h-auto min-h-11 min-w-0 justify-start gap-1.5 whitespace-normal text-left text-sm"><Link to={x.to}><Plus className="h-4 w-4 shrink-0 text-primary" />{x.l}</Link></Button>
+          <Button key={x.to} asChild variant="outline" className={`dashboard-action ${x.tone} h-auto min-h-20 min-w-0 justify-start gap-3 whitespace-normal p-3 text-left text-sm`}><Link to={x.to}><span className="action-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"><x.icon /></span><span className="font-semibold">{x.l}</span></Link></Button>
         ))}
       </div>
 

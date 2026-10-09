@@ -33,6 +33,7 @@ export type Row = Record<string, any>;
 export type SaveCtx = { sessionId: string | null; record: Row; values: Row };
 
 export type ModuleDef = {
+  customView?: "stationery";
   key: string;
   title: string;
   table: string;
@@ -134,6 +135,7 @@ const txnImport = (withType: boolean): ImportCol[] => [
 ];
 
 export const MODULES: ModuleDef[] = [
+  { key: "stationery", title: "Stationery Issue", customView: "stationery", table: "student_charges", select: "*", sessionScoped: true, orderBy: "created_at", writeRoles: ["admin"], noAdd: true, columns: [], fields: [] },
   {
     key: "students", title: "Students", table: "students", select: "*", sessionScoped: false, orderBy: "admission_no",
     sessionJoin: { table: "student_sessions", select: "session_id, class, section, status" }, addLabel: "Add Student (this session)", sessionImport: "student",

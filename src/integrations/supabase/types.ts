@@ -978,6 +978,7 @@ export type Database = {
           installment: string | null
           remarks: string | null
           session_id: string
+          stationery_items: Json | null
           student_id: string
         }
         Insert: {
@@ -991,6 +992,7 @@ export type Database = {
           installment?: string | null
           remarks?: string | null
           session_id: string
+          stationery_items?: Json | null
           student_id: string
         }
         Update: {
@@ -1004,6 +1006,7 @@ export type Database = {
           installment?: string | null
           remarks?: string | null
           session_id?: string
+          stationery_items?: Json | null
           student_id?: string
         }
         Relationships: [
@@ -1514,6 +1517,15 @@ export type Database = {
       }
       is_admin: { Args: never; Returns: boolean }
       is_finance: { Args: never; Returns: boolean }
+      issue_stationery: {
+        Args: {
+          _id: string
+          _items: Json
+          _session_id: string
+          _student_id: string
+        }
+        Returns: string
+      }
       my_staff_id: { Args: never; Returns: string }
     }
     Enums: {
