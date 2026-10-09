@@ -12,6 +12,7 @@
 ## ERP architecture
 - SchoolLogo is the shared official asset; root BrandExperience handles fresh-open/bfcache splash and login-event welcome with CSS only. Why: navigation, auth and school data stay untouched.
 - All CRUD/import/export modules are declared once in `src/lib/modules.tsx` and rendered by `ResourcePage`; add modules there, not new pages. Why: one engine, no duplication.
+- Stationery is a custom view registered in modules, reusing student_charges; an invoker RPC validates admin/session/items and uses the charge UUID for atomic retry safety. Issued rows are immutable; category-tagged payments are displayed oldest-charge-first without changing payment allocation. Why: no inventory or duplicate finance system, no invented links or silent corrections.
 - Session data always carries `session_id`; people (students, staff) are master rows linked via `student_sessions` / `staff_sessions`. Why: history must never mix across sessions.
 - Financial rules (overpayment, cross-session, ledger sync into `transactions`, audit) live in DB triggers; financial rows are reversed/corrected, never edited or deleted by non-admins. Why: data safety independent of UI.
 - Salary math and employment-period eligibility live only in `src/lib/finance.ts` (30-day month, inclusive session/join/exit clipping, tiered absence deduction). Why: single source for payroll numbers.

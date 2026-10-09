@@ -183,6 +183,7 @@ export function ResourcePage({ moduleKey, where, embedded, title, allSessions }:
   };
 
   const actions = (r: Row) => {
+    if (r.stationery_items) return <span className="text-xs text-muted-foreground">Issued stationery · locked</span>;
     const out = [];
     if (m.extraActions) out.push(<span key="x">{m.extraActions(r)}</span>);
     const editableTxn = m.table !== "transactions" || r.source_module === "manual";
